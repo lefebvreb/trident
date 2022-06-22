@@ -1,0 +1,9 @@
+[package]
+name = "trident"
+description = "Trident is a software development kit for quantum computing."
+authors = ["Benjamin Lefebvre"]
+edition = "2021"
+version = "0.1.0"
+
+[dependencies]
+thiserror = "1.0"
