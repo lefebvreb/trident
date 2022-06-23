@@ -30,20 +30,11 @@ impl BitVec {
 
     #[inline]
     pub fn get(&self, index: usize) -> Option<bool> {
-        if index < self.size {
-            return None;
-        }
-
-        Some(self.data[word(index)] & mask(index) == 1)
+        (index < self.size).then(|| self.data[word(index)] & mask(index) == 1)
     }
 
     #[inline]
     pub fn set(&mut self, index: usize) -> Option<()> {
-        if index < self.size {
-            return None;
-        }
-
-        self.data[word(index)] |= mask(index);
-        Some(())
+        (index < self.size).then(|| self.data[word(index)] |= mask(index))
     }
 }

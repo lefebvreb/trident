@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use crate::bounded::Parameter;
+use crate::bounded::{FormalParameter, FormalParameterList};
 use crate::genericity::Id;
 use crate::instruction::Instruction;
 
@@ -46,6 +46,23 @@ impl QuantumCircuit {
             num_parameters: builder.num_parameters, 
             instructions: builder.instructions.into_boxed_slice(), 
         })
+    }
+}
+
+impl<'id> CircuitBuilder<'id> {
+    #[inline]
+    pub parameter(&mut self) -> FormalParameter<'id> {
+        let res = FormalParameter::new(self.num_parameters);
+        self.num_parameters += 1;
+        res
+    }
+
+    #[inline]
+    pub parameter_list(&mut self, len: u32) -> FormalParameter<'id> {
+        let end = self.num_parameters + len;
+        let res = FormalParameterList::new(self.num_parameters .. end);
+        self.num_parameters = end;
+        res
     }
 }
 
