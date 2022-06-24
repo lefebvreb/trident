@@ -8,14 +8,19 @@ pub struct Parameter<'id> {
     id: Id<'id>,
 }
 
-impl Parameter<'id> {
+impl<'id> Parameter<'id> {
     #[inline]
-    pub fn is_value(self) {
-        f64::from(self.bits).is_finite()
+    pub(crate) fn new(bits: u64) -> Self {
+        Self { bits, id: Id::default() }
     }
 
     #[inline]
-    pub fn is_formal(self) {
+    pub fn is_value(self) -> bool {
+        f64::from_bits(self.bits).is_finite()
+    }
+
+    #[inline]
+    pub fn is_formal(self) -> bool {
         !self.is_value()
     }
 
@@ -25,8 +30,8 @@ impl Parameter<'id> {
     }
 
     #[inline]
-    pub fn as_formal(self) -> Option<Parameter<'id>> {
-        self.is_formal().then(|| Parameter::new((self.bits & 0xFFFFFFFF) as u32))
+    pub fn as_formal(self) -> Option<FormalParameter<'id>> {
+        self.is_formal().then(|| FormalParameter::new((self.bits & 0xFFFFFFFF) as u32))
     }
 }
 
@@ -37,32 +42,32 @@ impl<'id> From<f64> for Parameter<'id> {
             value = 0.0;
         }
 
-        Parameter { bits: value.to_bits() }
+        Self::new(value.to_bits())
     }
 }
 
 impl<'id> From<FormalParameter<'id>> for Parameter<'id> {
     #[inline]
     fn from(formal: FormalParameter<'id>) -> Self {
-        Parameter { bits: u64::from(formal.i) | f64::INFINITY.to_bits() }
+        Self::new(u64::from(formal.n) | f64::INFINITY.to_bits())
     }
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct FormalParameter<'id> {
-    i: u32,
+    n: u32,
     id: Id<'id>,
 }
 
 impl<'id> FormalParameter<'id> {
     #[inline]
-    pub(crate) fn new(i: u32) -> FormalParameter<'id> {
-        FormalParameter { i, id: Id::default() }
+    pub(crate) fn new(n: u32) -> FormalParameter<'id> {
+        Self { n, id: Id::default() }
     } 
 
     #[inline]
     pub fn id(self) -> u32 {
-        self.i
+        self.n
     }
 }
 
@@ -79,7 +84,7 @@ impl<'id> FormalParameterList<'id> {
     }
 
     #[inline]
-    pub fn ids(&self) -> Range<u32> {
+    pub fn range(&self) -> Range<u32> {
         self.range.clone()
     }
 
@@ -89,13 +94,13 @@ impl<'id> FormalParameterList<'id> {
     }
 
     #[inline]
-    pub fn get(&self, i: u32) -> Option<FormalParameter<'id>> {
-        (i < self.len()).then(|| FormalParameter::new(i + self.range.start))
+    pub fn get(&self, id: u32) -> Option<FormalParameter<'id>> {
+        (id < self.len()).then(|| FormalParameter::new(id + self.range.start))
     }
 
     #[inline]
     pub fn contains(&self, parameter: FormalParameter<'id>) -> bool {
-        self.range.contains(&parameter.i)
+        self.range.contains(&parameter.n)
     }
 
     #[inline]

@@ -5,6 +5,8 @@
 mod bitset;
 mod circuit;
 mod genericity;
-mod instruction;
 mod linalg;
-mod parameter;
+
+pub mod prelude {
+    pub use crate::circuit::QuantumCircuit;
+}
