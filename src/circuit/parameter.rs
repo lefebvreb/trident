@@ -41,7 +41,7 @@ impl<'id> Parameter<'id> {
 impl<'id> From<f64> for Parameter<'id> {
     #[inline]
     fn from(mut value: f64) -> Self {
-        if value.is_normal() {
+        if !value.is_normal() {
             value = 0.0;
         }
 

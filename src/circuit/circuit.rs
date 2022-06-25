@@ -2,7 +2,7 @@ use thiserror::Error;
 
 use crate::genericity::Id;
 
-use super::{FormalParameter, Instruction, Parameter, Qubit, List, CircuitSymbol};
+use super::{FormalParameter, Instruction, Parameter, Qubit, List, CircuitSymbol, Bit};
 use super::symbol::CircuitSymbolPrivate;
 
 pub struct QuantumCircuit {
@@ -13,11 +13,11 @@ pub struct QuantumCircuit {
 }
 
 pub struct CircuitBuilder<'id> {
-    id: Id<'id>,
     pub(crate) qubit_count: u32,
     pub(crate) bit_count: u32,
     pub(crate) parameter_count: u32,
     instructions: Vec<Instruction>,
+    id: Id<'id>,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Error)]
@@ -49,31 +49,18 @@ impl QuantumCircuit {
     }
 }
 
-pub trait CircuitAllocatable<'id>: Sized {
-    fn alloc(b: &mut CircuitBuilder) -> Self;
-}
-
-impl<'id, T: CircuitSymbol<'id>> CircuitAllocatable<'id> for T {
+impl<'id> CircuitBuilder<'id> {
     #[inline]
-    fn alloc(b: &mut CircuitBuilder) -> Self {
-        let count = T::count(b);
+    pub fn alloc<T: CircuitSymbol<'id>>(&mut self) -> T {
+        let count = T::count(self);
         let res = T::new(*count);
         *count += 1;
         res
     }
-}
 
-impl<'id, const N: usize, T: CircuitSymbol<'id>> CircuitAllocatable<'id> for [T; N] {
     #[inline]
-    fn alloc(b: &mut CircuitBuilder) -> Self {
-        [0; N].map(|_| T::alloc(b))
-    }
-}
-
-impl<'id> CircuitBuilder<'id> {
-    #[inline]
-    pub fn alloc<T: CircuitAllocatable<'id>>(&mut self) -> T {
-        T::alloc(self)
+    pub fn alloc_n<T: CircuitSymbol<'id>, const N: usize>(&mut self) -> [T; N] {
+        [0; N].map(|_| self.alloc())
     }
 
     #[inline]
@@ -105,7 +92,7 @@ impl<'id> CircuitBuilder<'id> {
     }
 
     #[inline]
-    pub fn cx(&mut self, target: Qubit<'id>, control: Qubit<'id>) -> &mut Self {
+    pub fn cx(&mut self, control: Qubit<'id>, target: Qubit<'id>) -> &mut Self {
         todo!()
     }
 
@@ -116,35 +103,24 @@ impl<'id> CircuitBuilder<'id> {
     {
         todo!()
     }
+
+    #[inline]
+    pub fn measure(&mut self, target: Qubit<'id>, result: Bit<'id>) -> &mut Self {
+        todo!()
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    // Use this as a doctest with compile_fail maybe
-    // #[test]
-    // fn genericity() {
-    //     fn try_unify<'a, T>(x: &'a T, b: &'a T) {}
-
-    //     let qc1 = QuantumCircuit::new(|b1| {
-    //         let qc2 = QuantumCircuit::new(|b2| {
-    //             try_unify(b1, b2);
-
-    //             Ok(())
-    //         }).unwrap();
-
-    //         Ok(())
-    //     }).unwrap();
-    // }
-
     #[test]
     fn bell() {
         let circ = QuantumCircuit::new(|circ| {
-            let [q1, q2] = circ.alloc::<[Qubit; 2]>();
+            let [q1, q2] = circ.alloc_n();
 
             circ.h(q1)
-                .cx(q2, q1);
+                .cx(q1, q2);
 
             Ok(())
         });

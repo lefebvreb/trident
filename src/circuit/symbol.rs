@@ -14,7 +14,7 @@ pub trait CircuitSymbolPrivate<'id>: Sized {
         List { range, _phantom: PhantomData }
     }
 
-    fn count<'b>(b: &'b mut CircuitBuilder) -> &'b mut u32;
+    fn count<'b>(circ: &'b mut CircuitBuilder) -> &'b mut u32;
 }
 
 pub trait CircuitSymbol<'id>: CircuitSymbolPrivate<'id> {
@@ -37,8 +37,8 @@ macro_rules! circuit_symbol_impl {
             }
 
             #[inline]
-            fn count<'b>(b: &'b mut CircuitBuilder) -> &'b mut u32 {
-                &mut b.$count
+            fn count<'b>(circ: &'b mut CircuitBuilder) -> &'b mut u32 {
+                &mut circ.$count
             }
         }
 
