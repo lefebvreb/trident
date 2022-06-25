@@ -1,5 +1,3 @@
-use std::ops::Range;
-
 use crate::genericity::Id;
 
 use super::{FormalParameter, CircuitSymbol};
@@ -13,7 +11,7 @@ pub struct Parameter<'id> {
 
 impl<'id> Parameter<'id> {
     #[inline]
-    pub(crate) fn new(bits: u64) -> Self {
+    fn new(bits: u64) -> Self {
         Self { bits, id: Id::default() }
     }
 

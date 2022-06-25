@@ -3,7 +3,7 @@ use std::ops::Range;
 
 use crate::genericity::Id;
 
-use super::{QuantumCircuitError, CircuitBuilder};
+use super::CircuitBuilder;
 
 #[doc(hidden)]
 pub trait CircuitSymbolPrivate<'id>: Sized {
@@ -14,7 +14,7 @@ pub trait CircuitSymbolPrivate<'id>: Sized {
         List { range, _phantom: PhantomData }
     }
 
-    fn count<'b>(circ: &'b mut CircuitBuilder) -> &'b mut u32;
+    fn count<'a>(circ: &'a mut CircuitBuilder) -> &'a mut u32;
 }
 
 pub trait CircuitSymbol<'id>: CircuitSymbolPrivate<'id> {
@@ -24,6 +24,7 @@ pub trait CircuitSymbol<'id>: CircuitSymbolPrivate<'id> {
 macro_rules! circuit_symbol_impl {
     { $(#[doc $($args :tt)*])* $name: ident $count: ident} => {
         $(#[doc $($args)*])*
+        #[repr(transparent)]
         #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
         pub struct $name<'id> {
             n: u32,
@@ -81,13 +82,13 @@ impl<'id, T: CircuitSymbol<'id> + 'id> List<T> {
     }
 
     #[inline]
-    pub fn len(&self) -> u32 {
-        self.range.end - self.range.start
+    pub fn len(&self) -> usize {
+        (self.range.end - self.range.start) as usize
     }
 
     #[inline]
-    pub fn get(&self, id: u32) -> Option<T> {
-        (id < self.len()).then(|| T::new(id + self.range.start))
+    pub fn get(&self, id: usize) -> Option<T> {
+        (id < self.len()).then(|| T::new(id as u32 + self.range.start))
     }
 
     #[inline]

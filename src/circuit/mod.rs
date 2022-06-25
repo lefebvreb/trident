@@ -4,6 +4,6 @@ mod parameter;
 mod symbol;
 
 pub use circuit::{CircuitBuilder, QuantumCircuit, QuantumCircuitError};
-pub use instruction::Instruction;
+pub use instruction::Instr;
 pub use parameter::Parameter;
 pub use symbol::{Bit, Qubit, FormalParameter, CircuitSymbol, List};
