@@ -2,10 +2,11 @@
 
 #![allow(unused)]
 
-mod bitset;
-mod circuit;
 mod genericity;
-mod linalg;
+
+pub mod bitset;
+pub mod circuit;
+pub mod linalg;
 
 pub mod prelude {
     pub use crate::circuit::QuantumCircuit;
