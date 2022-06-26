@@ -10,7 +10,7 @@ pub trait CircuitSymbolPrivate<'id>: Sized {
     fn new(n: u32) -> Self;
 
     #[inline]
-    fn new_list(range: Range<u32>) -> List<Self> {
+    fn list(range: Range<u32>) -> List<Self> {
         List { range, _phantom: PhantomData }
     }
 
@@ -22,8 +22,8 @@ pub trait CircuitSymbol<'id>: CircuitSymbolPrivate<'id> {
 }
 
 macro_rules! circuit_symbol_impl {
-    { $(#[doc $($args :tt)*])* $name: ident $count: ident} => {
-        $(#[doc $($args)*])*
+    { $(#[doc$($args :tt)*])* $name: ident $count: ident} => {
+        $(#[doc$($args)*])*
         #[repr(transparent)]
         #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
         pub struct $name<'id> {
@@ -54,12 +54,6 @@ macro_rules! circuit_symbol_impl {
 
 circuit_symbol_impl! {
     /// TODO: Doc
-    Bit 
-    bit_count
-}
-
-circuit_symbol_impl! {
-    /// TODO: Doc
     Qubit 
     qubit_count
 }
@@ -68,6 +62,12 @@ circuit_symbol_impl! {
     /// TODO: Doc
     FormalParameter 
     parameter_count
+}
+
+circuit_symbol_impl! {
+    /// TODO: Doc
+    Bit 
+    bit_count
 }
 
 pub struct List<T> {

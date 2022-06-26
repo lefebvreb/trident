@@ -97,12 +97,7 @@ impl<'id> CircuitBuilder<'id> {
     pub fn alloc_list<T: CircuitSymbol<'id>>(&mut self, len: usize) -> Result<List<T>, QuantumCircuitError> {
         let count = T::count(self);
         let start = *count;
-        checked_incr(count, len).map(|_| T::new_list(start..*count))
-    }
-
-    #[inline]
-    pub fn bit_count(&self) -> usize {
-        self.bit_count as usize
+        checked_incr(count, len).map(|_| T::list(start..*count))
     }
 
     #[inline]
@@ -113,6 +108,11 @@ impl<'id> CircuitBuilder<'id> {
     #[inline]
     pub fn parameter_count(&self) -> usize {
         self.parameter_count as usize
+    }
+
+    #[inline]
+    pub fn bit_count(&self) -> usize {
+        self.bit_count as usize
     }
 
     #[inline]
