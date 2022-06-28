@@ -3,11 +3,11 @@ macro_rules! instr_impl {
         $(
             $(#[doc$($args :tt)*])*
             $name: ident {
-                qubits:     $qubit: literal,
-                params:     $param: literal,
-                bits:       $bit: literal,
+                qubits:     $qubits: literal,
+                params:     $params: literal,
+                bits:       $bits: literal,
                 unitary:    $unitary: literal,
-                label:      $str: literal,
+                label:      $label: literal,
             },
         )*
     } => {
@@ -27,21 +27,21 @@ macro_rules! instr_impl {
             #[inline]
             pub const fn qubit_count(self) -> usize {
                 match self {
-                    $($name => $qubit,)*
+                    $($name => $qubits,)*
                 }
             }
 
             #[inline]
             pub const fn parameter_count(self) -> usize {
                 match self {
-                    $($name => $param,)*
+                    $($name => $params,)*
                 }
             }
 
             #[inline]
             pub const fn bit_count(self) -> usize {
                 match self {
-                    $($name => $bit,)*
+                    $($name => $bits,)*
                 }
             }
 
@@ -55,7 +55,7 @@ macro_rules! instr_impl {
             #[inline]
             pub const fn label(self) -> &'static str {
                 match self {
-                    $($name => $str,)*
+                    $($name => $label,)*
                 }
             }
         }
@@ -113,4 +113,14 @@ instr_impl! {
         unitary: false,
         label: "barrier",
     },
+}
+
+struct VarInt;
+
+enum Condition {
+    Eq {
+        bits: std::ops::Range<u32>,
+        value: VarInt,
+        mask: VarInt,
+    }
 }

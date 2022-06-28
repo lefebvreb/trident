@@ -3,7 +3,7 @@ use std::ops::Range;
 
 use crate::genericity::Id;
 
-use super::CircuitBuilder;
+use super::{CircuitBuilder, QuantumCircuitError};
 
 #[doc(hidden)]
 pub trait CircuitSymbolPrivate<'id>: Sized {
@@ -17,7 +17,7 @@ pub trait CircuitSymbolPrivate<'id>: Sized {
     fn count<'a>(circ: &'a mut CircuitBuilder) -> &'a mut u32;
 }
 
-pub trait CircuitSymbol<'id>: CircuitSymbolPrivate<'id> {
+pub trait Symbol<'id>: CircuitSymbolPrivate<'id> {
     fn id(self) -> u32;
 }
 
@@ -43,7 +43,7 @@ macro_rules! circuit_symbol_impl {
             }
         }
 
-        impl<'id> CircuitSymbol<'id> for $name<'id> {
+        impl<'id> Symbol<'id> for $name<'id> {
             #[inline]
             fn id(self) -> u32 {
                 self.n
@@ -75,7 +75,7 @@ pub struct List<T> {
     _phantom: PhantomData<T>,
 }
 
-impl<'id, T: CircuitSymbol<'id> + 'id> List<T> {
+impl<'id, T: Symbol<'id> + 'id> List<T> {
     #[inline]
     pub fn range(&self) -> Range<u32> {
         self.range.clone()
@@ -101,3 +101,28 @@ impl<'id, T: CircuitSymbol<'id> + 'id> List<T> {
         self.range.clone().map(T::new)
     }
 }
+
+#[doc(hidden)]
+pub trait SymbolTuple<'id>: Sized {
+    fn alloc(b: &mut CircuitBuilder<'id>) -> Result<Self, QuantumCircuitError>;
+}
+
+macro_rules! peel {
+    { $name: ident, $($rest: ident,)* } => { tuple!{ $($rest,)* } }
+}
+
+macro_rules! tuple {
+    {} => {};
+    { $($name: ident,)+ } => {
+        impl<'id, $($name,)+> SymbolTuple<'id> for ($($name,)+) where $($name: Symbol<'id>,)* {
+            #[inline]
+            fn alloc(b: &mut CircuitBuilder<'id>) -> Result<Self, QuantumCircuitError> {
+                Ok(($(b.alloc::<$name>()?,)+))
+            }
+        }
+
+        peel! { $($name,)+ }
+    }
+}
+
+tuple! { A, B, C, D, E, F, G, H, I, J, K, L, }

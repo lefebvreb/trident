@@ -1,9 +1,9 @@
 use crate::genericity::Id;
 
-use super::{FormalParameter, CircuitSymbol};
+use super::{FormalParameter, Symbol};
 use super::symbol::CircuitSymbolPrivate;
 
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct Parameter<'id> {
     bits: u64,
     id: Id<'id>,
@@ -53,3 +53,16 @@ impl<'id> From<FormalParameter<'id>> for Parameter<'id> {
         Self::new(u64::from(formal.id()) | f64::INFINITY.to_bits())
     }
 }
+
+impl<'id> PartialEq for Parameter<'id> {
+    #[inline]
+    fn eq(&self, rhs: &Self) -> bool {
+        match (self.as_value(), rhs.as_value()) {
+            (Some(x), Some(y)) => (x - y).abs() < 1e-10,
+            (None, None) => self.bits == rhs.bits,
+            _ => false,
+        }
+    }
+}
+
+impl<'id> Eq for Parameter<'id> {}
