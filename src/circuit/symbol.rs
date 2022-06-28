@@ -5,24 +5,62 @@ use crate::genericity::Id;
 
 use super::{CircuitBuilder, QuantumCircuitError};
 
-#[doc(hidden)]
-pub trait CircuitSymbolPrivate<'id>: Sized {
-    fn new(n: u32) -> Self;
+pub(crate) mod private {
+    use crate::circuit::CircuitBuilder;
 
-    #[inline]
-    fn list(range: Range<u32>) -> List<Self> {
-        List { range, _phantom: PhantomData }
+    #[doc(hidden)]
+    pub trait SymbolPrivate<'id> {
+        fn new(n: u32) -> Self;
+
+        fn count<'a>(circ: &'a mut CircuitBuilder<'id>) -> &'a mut u32;
     }
-
-    fn count<'a>(circ: &'a mut CircuitBuilder) -> &'a mut u32;
 }
 
-pub trait Symbol<'id>: CircuitSymbolPrivate<'id> {
+#[inline(always)]
+fn checked_incr(a: &mut u32, n: usize) -> Result<(), QuantumCircuitError> {
+    n.try_into().ok()
+        .and_then(|n| a.checked_add(n))
+        .map(|n| *a = n)
+        .ok_or(QuantumCircuitError::AllocOverflow)
+}
+
+pub trait Symbol<'id>: Sized + private::SymbolPrivate<'id> + 'id {
     fn id(self) -> u32;
+
+    #[inline]
+    fn alloc(b: &mut CircuitBuilder<'id>) -> Result<Self, QuantumCircuitError> {
+        let count = Self::count(b);
+        let res = Self::new(*count);
+        checked_incr(count, 1).map(|_| res)
+    }
+
+    #[inline]
+    fn alloc_n<const N: usize>(b: &mut CircuitBuilder<'id>) -> Result<[Self; N], QuantumCircuitError> {
+        let count = Self::count(b);
+        let mut start = *count;
+        checked_incr(count, N).map(|_|
+            [0; N].map(|_| {
+                let res = Self::new(start);
+                start += 1;
+                res
+            })
+        )
+    }
+
+    #[inline]
+    fn alloc_list(b: &mut CircuitBuilder<'id>, len: usize) -> Result<List<Self>, QuantumCircuitError> {
+        let count = Self::count(b);
+        let start = *count;
+        checked_incr(count, len).map(|_| List::new(start..*count))
+    }
 }
 
 macro_rules! circuit_symbol_impl {
-    { $(#[doc$($args :tt)*])* $name: ident $count: ident} => {
+    { 
+        $(#[doc$($args :tt)*])* 
+        $name: ident,
+        count: $count: ident
+    } => {
         $(#[doc$($args)*])*
         #[repr(transparent)]
         #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
@@ -31,15 +69,15 @@ macro_rules! circuit_symbol_impl {
             id: Id<'id>,
         }
 
-        impl<'id> CircuitSymbolPrivate<'id> for $name<'id> {
+        impl<'id> private::SymbolPrivate<'id> for $name<'id> {
             #[inline]
             fn new(n: u32) -> Self {
                 Self { n, id: Id::default() }
             }
-
+            
             #[inline]
             fn count<'b>(circ: &'b mut CircuitBuilder) -> &'b mut u32 {
-                &mut circ.$count
+                circ.$count()
             }
         }
 
@@ -54,20 +92,20 @@ macro_rules! circuit_symbol_impl {
 
 circuit_symbol_impl! {
     /// TODO: Doc
-    Qubit 
-    qubit_count
+    Qubit,
+    count: qubit_count_mut
 }
 
 circuit_symbol_impl! {
     /// TODO: Doc
-    FormalParameter 
-    parameter_count
+    FormalParameter,
+    count: parameter_count_mut
 }
 
 circuit_symbol_impl! {
     /// TODO: Doc
-    Bit 
-    bit_count
+    Bit,
+    count: bit_count_mut
 }
 
 pub struct List<T> {
@@ -76,6 +114,11 @@ pub struct List<T> {
 }
 
 impl<'id, T: Symbol<'id> + 'id> List<T> {
+    #[inline]
+    fn new(range: Range<u32>) -> Self {
+        List { range, _phantom: PhantomData }
+    }
+
     #[inline]
     pub fn range(&self) -> Range<u32> {
         self.range.clone()
@@ -102,7 +145,6 @@ impl<'id, T: Symbol<'id> + 'id> List<T> {
     }
 }
 
-#[doc(hidden)]
 pub trait SymbolTuple<'id>: Sized {
     fn alloc(b: &mut CircuitBuilder<'id>) -> Result<Self, QuantumCircuitError>;
 }

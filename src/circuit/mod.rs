@@ -1,9 +1,6 @@
 mod circuit;
-mod instruction;
-mod parameter;
-mod symbol;
+pub mod instruction;
+pub mod parameter;
+pub mod symbol;
 
-pub use circuit::{CircuitBuilder, QuantumCircuit, QuantumCircuitError};
-pub use instruction::Instr;
-pub use parameter::Parameter;
-pub use symbol::{Bit, Qubit, FormalParameter, Symbol, List};
+pub use circuit::*;

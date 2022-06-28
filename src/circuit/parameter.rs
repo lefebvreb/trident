@@ -1,18 +1,18 @@
 use crate::genericity::Id;
 
-use super::{FormalParameter, Symbol};
-use super::symbol::CircuitSymbolPrivate;
+use super::symbol::{FormalParameter, Symbol};
+use super::symbol::private::SymbolPrivate;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Parameter<'id> {
+    _id: Id<'id>,
     bits: u64,
-    id: Id<'id>,
 }
 
 impl<'id> Parameter<'id> {
     #[inline]
     fn new(bits: u64) -> Self {
-        Self { bits, id: Id::default() }
+        Self { bits, _id: Id::default() }
     }
 
     #[inline]

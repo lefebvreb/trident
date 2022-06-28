@@ -8,9 +8,11 @@
 
 [4] Graph-theoretic Simplification of Quantum Circuits with the ZX-calculus: https://arxiv.org/abs/1902.03178
 
-# OpenQASM 2.0, IBM
+# OpenQASM 2.0
 
 [5] Open Quantum Assembly Language: https://arxiv.org/abs/1707.03429
+
+# IBM
 
 [6] Qiskit Backend Specifications for OpenQASM and OpenPulse Experiments: https://arxiv.org/abs/1809.03452
 

@@ -2,8 +2,9 @@ use thiserror::Error;
 
 use crate::genericity::Id;
 
-use super::symbol::SymbolTuple;
-use super::{Instr, Parameter, Qubit, List, Symbol, Bit};
+use super::instruction::Instr;
+use super::parameter::Parameter;
+use super::symbol::{SymbolTuple, Symbol, Qubit, Bit, List};
 
 pub struct QuantumCircuit {
     qubit_count: u32,
@@ -13,11 +14,11 @@ pub struct QuantumCircuit {
 }
 
 pub struct CircuitBuilder<'id> {
-    pub(crate) qubit_count: u32,
-    pub(crate) bit_count: u32,
-    pub(crate) parameter_count: u32,
+    _id: Id<'id>,
+    qubit_count: u32,
+    bit_count: u32,
+    parameter_count: u32,
     instructions: Vec<Instr>,
-    id: Id<'id>,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Error)]
@@ -33,7 +34,7 @@ impl QuantumCircuit {
         F: for<'id> FnOnce(&mut CircuitBuilder<'id>) -> Result<(), QuantumCircuitError>
     {
         let mut builder = CircuitBuilder {
-            id: Id::default(),
+            _id: Id::default(),
             qubit_count: 0,
             bit_count: 0,
             parameter_count: 0,
@@ -66,44 +67,23 @@ impl QuantumCircuit {
     }
 }
 
-#[inline(always)]
-fn checked_incr(a: &mut u32, n: usize) -> Result<(), QuantumCircuitError> {
-    *a = a.checked_add(n.try_into().map_err(|_| QuantumCircuitError::AllocOverflow)?)
-        .ok_or(QuantumCircuitError::AllocOverflow)?;
-    Ok(())
-}
-
 impl<'id> CircuitBuilder<'id> {
+    // Returns a mutable reference to the qubit count.
     #[inline]
-    pub fn alloc<T: Symbol<'id>>(&mut self) -> Result<T, QuantumCircuitError> {
-        let count = T::count(self);
-        let res = T::new(*count);
-        checked_incr(count, 1).map(|_| res)
+    pub(crate) fn qubit_count_mut(&mut self) -> &mut u32 {
+        &mut self.qubit_count
     }
 
+    // Returns a mutable reference to the parameter count.
     #[inline]
-    pub fn alloc_n<T: Symbol<'id>, const N: usize>(&mut self) -> Result<[T; N], QuantumCircuitError> {
-        let count = T::count(self);
-        let mut start = *count;
-        checked_incr(count, N).map(|_|
-            [0; N].map(|_| {
-                let res = T::new(start);
-                start += 1;
-                res
-            })
-        )
+    pub(crate) fn parameter_count_mut(&mut self) -> &mut u32 {
+        &mut self.parameter_count
     }
 
+    // Returns a mutable reference to the bit count.
     #[inline]
-    pub fn alloc_list<T: Symbol<'id>>(&mut self, len: usize) -> Result<List<T>, QuantumCircuitError> {
-        let count = T::count(self);
-        let start = *count;
-        checked_incr(count, len).map(|_| T::list(start..*count))
-    }
-
-    #[inline]
-    pub fn alloc_tuple<T: SymbolTuple<'id>>(&mut self) -> Result<T, QuantumCircuitError> {
-        T::alloc(self)
+    pub(crate) fn bit_count_mut(&mut self) -> &mut u32 {
+        &mut self.bit_count
     }
 
     #[inline]
@@ -119,6 +99,26 @@ impl<'id> CircuitBuilder<'id> {
     #[inline]
     pub fn bit_count(&self) -> usize {
         self.bit_count as usize
+    }
+
+    #[inline]
+    pub fn alloc<T: Symbol<'id>>(&mut self) -> Result<T, QuantumCircuitError> {
+        T::alloc(self)
+    }
+
+    #[inline]
+    pub fn alloc_n<T: Symbol<'id>, const N: usize>(&mut self) -> Result<[T; N], QuantumCircuitError> {
+        T::alloc_n(self)
+    }
+
+    #[inline]
+    pub fn alloc_list<T: Symbol<'id>>(&mut self, len: usize) -> Result<List<T>, QuantumCircuitError> {
+        T::alloc_list(self, len)
+    }
+
+    #[inline]
+    pub fn alloc_tuple<T: SymbolTuple<'id>>(&mut self) -> Result<T, QuantumCircuitError> {
+        T::alloc(self)
     }
 
     #[inline]

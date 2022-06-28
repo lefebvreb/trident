@@ -114,13 +114,3 @@ instr_impl! {
         label: "barrier",
     },
 }
-
-struct VarInt;
-
-enum Condition {
-    Eq {
-        bits: std::ops::Range<u32>,
-        value: VarInt,
-        mask: VarInt,
-    }
-}
