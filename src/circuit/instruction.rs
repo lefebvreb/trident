@@ -1,116 +1,267 @@
-macro_rules! instr_impl {
-    {
+use std::io::{Read, Write};
+use std::ops::Deref;
+use std::rc::Rc;
+
+use bitflags::bitflags;
+
+use crate::genericity::Id;
+
+use super::{QuantumCircuit, parameter};
+use super::parameter::Parameter;
+use super::symbol::{Qubit, Bit};
+
+macro_rules! operations {
+    { 
         $(
-            $(#[doc$($args :tt)*])*
+            $(#[doc$($args: tt)*])* 
             $name: ident {
-                qubits:     $qubits: literal,
-                params:     $params: literal,
-                bits:       $bits: literal,
-                unitary:    $unitary: literal,
-                label:      $label: literal,
+                qubits: $qubits: literal,
+                parameters: $parameters: literal,
+                bits: $bits: literal,
+                unitary: $unitary: literal,
+                label: $label: literal,
             },
-        )*
+        )* 
     } => {
         #[repr(u32)]
-        #[non_exhaustive]
-        #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-        pub enum Instr {
+        #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+        pub enum OperationKind {
             $(
                 $(#[doc$($args)*])*
                 $name,
             )*
         }
 
-        use Instr::*;
+        use OperationKind::*;
+        
+        impl OperationKind {
+            pub const ALL_OPERATIONS: &'static [Self] = &[$($name,)*];
 
-        impl Instr {
             #[inline]
-            pub const fn qubit_count(self) -> usize {
+            pub fn qubit_count(self) -> usize {
                 match self {
                     $($name => $qubits,)*
                 }
             }
 
             #[inline]
-            pub const fn parameter_count(self) -> usize {
+            pub fn parameter_count(self) -> usize {
                 match self {
-                    $($name => $params,)*
+                    $($name => $parameters,)*
                 }
             }
 
             #[inline]
-            pub const fn bit_count(self) -> usize {
+            pub fn bit_count(self) -> usize {
                 match self {
                     $($name => $bits,)*
                 }
             }
 
             #[inline]
-            pub const fn is_unitary(self) -> bool {
+            pub fn is_unitary(self) -> bool {
                 match self {
                     $($name => $unitary,)*
                 }
             }
 
             #[inline]
-            pub const fn label(self) -> &'static str {
+            pub fn label(self) -> &'static str {
                 match self {
                     $($name => $label,)*
                 }
             }
         }
+
     }
 }
 
-instr_impl! {
-    /// The identity gate.
-    I {
-        qubits: 1,
-        params: 0,
+operations! {
+    /// No-operation, or nop.
+    Nop {
+        qubits: 0,
+        parameters: 0,
         bits: 0,
-        unitary: true,
-        label: "I",
+        unitary: false,
+        label: "nop",
     },
+    /// The Hadamard gate.
     H {
         qubits: 1,
-        params: 0,
+        parameters: 0,
         bits: 0,
         unitary: true,
         label: "H",
     },
-    Cx {
-        qubits: 2,
-        params: 0,
+    /// The Pauli X gate, or NOT gate.
+    X {
+        qubits: 1,
+        parameters: 0,
         bits: 0,
         unitary: true,
-        label: "CX",
-    },
-    Rx {
-        qubits: 1,
-        params: 1,
-        bits: 0,
-        unitary: true,
-        label: "Rx",
-    },
-    Measure {
-        qubits: 1,
-        params: 0,
-        bits: 1,
-        unitary: false,
-        label: "measure",
-    },
-    Reset {
-        qubits: 1,
-        params: 0,
-        bits: 0,
-        unitary: false,
-        label: "reset",
+        label: "X",
     },
     Barrier {
-        qubits: 0,
-        params: 0,
+        qubits: 1,
+        parameters: 0,
         bits: 0,
         unitary: false,
         label: "barrier",
     },
+    Measure {
+        qubits: 1,
+        parameters: 0,
+        bits: 1,
+        unitary: false,
+        label: "measure",
+    },
+}
+
+impl Default for OperationKind {
+    #[inline(always)]
+    fn default() -> Self {
+        Nop
+    }
+}
+
+pub enum InstructionKind<'id> {
+    Operation {
+        kind: OperationKind,
+        controls: Option<&'id [Qubit<'id>]>,
+    },
+    Composite(Rc<QuantumCircuit>),
+}
+
+impl Default for InstructionKind<'_> {
+    #[inline]
+    fn default() -> Self {
+        Self::Operation { kind: OperationKind::default(), controls: None }
+    }
+}
+
+pub enum Modifier {
+    Conditional,
+    WhileLoop,
+    ForLoop,
+    Repeat,
+}
+
+#[derive(Default)]
+pub struct Instruction<'id> {
+    kind: InstructionKind<'id>,
+    modifier: Option<Modifier>,
+    targets: &'id [Qubit<'id>],
+    parameters: &'id [Parameter<'id>],
+    bits: &'id [Bit<'id>],
+}
+
+impl<'id> Instruction<'id> {
+    #[inline]
+    pub fn is_operation(&self) -> bool {
+        matches!(self.kind, InstructionKind::Operation { .. })
+    }
+
+    #[inline]
+    pub fn into_operation(&self) -> Option<OperationKind> {
+        match self.kind {
+            InstructionKind::Operation { kind, .. } => Some(kind),
+            _ => None,
+        }
+    }
+
+    #[inline]
+    pub fn is_composite(&self) -> bool {
+        matches!(self.kind, InstructionKind::Composite(_))
+    }
+
+    #[inline]
+    pub fn into_composite(&self) -> Option<&QuantumCircuit> {
+        match self.kind {
+            InstructionKind::Composite(ref circ) => Some(circ),
+            _ => None,
+        }
+    }
+
+    #[inline]
+    pub fn targets(&self) -> &[Qubit<'id>] {
+        self.targets
+    }
+
+    #[inline]
+    pub fn target_count(&self) -> usize {
+        self.targets.len()
+    }
+
+    #[inline]
+    pub fn has_controls(&self) -> bool {
+        matches!(self.kind, InstructionKind::Operation { controls: Some(_), .. })
+    }
+
+    #[inline]
+    pub fn controls(&self) -> Option<&[Qubit<'id>]> {
+        match self.kind {
+            InstructionKind::Operation { controls, .. } => controls,
+            _ => None,
+        }
+    }
+
+    #[inline]
+    pub fn parameters(&self) -> &[Parameter<'id>] {
+        self.parameters
+    }
+
+    #[inline]
+    pub fn parameter_count(&self) -> usize {
+        self.parameters.len()
+    }
+
+    #[inline]
+    pub fn bits(&self) -> &[Bit<'id>] {
+        self.bits
+    }
+
+    #[inline]
+    pub fn bit_count(&self) -> usize {
+        self.bits.len()
+    }
+
+    #[inline]
+    pub fn has_modifier(&self) -> bool {
+        self.modifier.is_some()
+    }
+
+    #[inline]
+    pub fn modifier(&self) -> Option<&Modifier> {
+        self.modifier.as_ref()
+    }
+}
+
+pub struct InstructionRope;
+
+pub(crate) struct RopeToken(usize);
+
+impl InstructionRope {
+    #[inline]
+    pub(crate) fn push_composite(&mut self, circ: Rc<QuantumCircuit>, targets: &[Qubit], parameters: &[Qubit], bits: &[Bit]) -> RopeToken {
+        todo!()
+    }
+
+    #[inline]
+    pub(crate) fn push_controls(&mut self, token: RopeToken, controls: &[Qubit]) -> RopeToken {
+        todo!()
+    }
+
+    #[inline]
+    pub(crate) fn push_modifier(&mut self, token: RopeToken, modifier: Modifier) {
+        todo!()
+    }
+
+    #[inline]
+    pub(crate) fn iter<'any>(&mut self) -> InstructionIter<'any> {
+        todo!()
+    }
+}
+
+pub struct InstructionIter<'id> {
+    _id: Id<'id>
 }

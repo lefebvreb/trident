@@ -6,4 +6,5 @@ edition = "2021"
 version = "0.1.0"
 
 [dependencies]
-thiserror = "1.0"
+bitflags = "1"
+thiserror = "1"

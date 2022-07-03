@@ -16,6 +16,8 @@ pub(crate) mod private {
     }
 }
 
+use private::SymbolPrivate;
+
 #[inline(always)]
 fn checked_incr(a: &mut u32, n: usize) -> Result<(), QuantumCircuitError> {
     n.try_into().ok()
@@ -24,7 +26,7 @@ fn checked_incr(a: &mut u32, n: usize) -> Result<(), QuantumCircuitError> {
         .ok_or(QuantumCircuitError::AllocOverflow)
 }
 
-pub trait Symbol<'id>: Sized + private::SymbolPrivate<'id> + 'id {
+pub trait Symbol<'id>: Clone + Copy + PartialEq + Eq + PartialOrd + Ord + Sized + SymbolPrivate<'id> + 'id {
     fn id(self) -> u32;
 
     #[inline]
@@ -57,7 +59,7 @@ pub trait Symbol<'id>: Sized + private::SymbolPrivate<'id> + 'id {
 
 macro_rules! circuit_symbol_impl {
     { 
-        $(#[doc$($args :tt)*])* 
+        $(#[doc$($args: tt)*])* 
         $name: ident,
         count: $count: ident
     } => {
@@ -69,7 +71,13 @@ macro_rules! circuit_symbol_impl {
             id: Id<'id>,
         }
 
-        impl<'id> private::SymbolPrivate<'id> for $name<'id> {
+        impl<'id> $name<'id> {
+            pub unsafe fn new_unchecked(n: u32) -> Self {
+                Self::new(n)
+            }
+        }
+
+        impl<'id> SymbolPrivate<'id> for $name<'id> {
             #[inline]
             fn new(n: u32) -> Self {
                 Self { n, id: Id::default() }
@@ -120,6 +128,11 @@ impl<'id, T: Symbol<'id> + 'id> List<T> {
     }
 
     #[inline]
+    pub unsafe fn new_unchecked(range: Range<u32>) -> Self {
+        List::new(range)
+    }
+
+    #[inline]
     pub fn range(&self) -> Range<u32> {
         self.range.clone()
     }
@@ -127,6 +140,11 @@ impl<'id, T: Symbol<'id> + 'id> List<T> {
     #[inline]
     pub fn len(&self) -> usize {
         (self.range.end - self.range.start) as usize
+    }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 
     #[inline]
@@ -142,6 +160,13 @@ impl<'id, T: Symbol<'id> + 'id> List<T> {
     #[inline]
     pub fn iter(&self) -> impl Iterator<Item = T> + 'id {
         self.range.clone().map(T::new)
+    }
+}
+
+impl<'id, T: Symbol<'id> + 'id> From<T> for List<T> {
+    #[inline]
+    fn from(sym: T) -> Self {
+        Self::new(sym.id()..sym.id() + 1)
     }
 }
 

@@ -2,7 +2,6 @@ use thiserror::Error;
 
 use crate::genericity::Id;
 
-use super::instruction::Instr;
 use super::parameter::Parameter;
 use super::symbol::{SymbolTuple, Symbol, Qubit, Bit, List};
 
@@ -10,7 +9,6 @@ pub struct QuantumCircuit {
     qubit_count: u32,
     bit_count: u32,
     parameter_count: u32,
-    instructions: Box<[Instr]>,
 }
 
 pub struct CircuitBuilder<'id> {
@@ -18,7 +16,6 @@ pub struct CircuitBuilder<'id> {
     qubit_count: u32,
     bit_count: u32,
     parameter_count: u32,
-    instructions: Vec<Instr>,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Error)]
@@ -38,7 +35,6 @@ impl QuantumCircuit {
             qubit_count: 0,
             bit_count: 0,
             parameter_count: 0,
-            instructions: vec![],
         };
         
         init(&mut builder)?;
@@ -46,8 +42,7 @@ impl QuantumCircuit {
         Ok(QuantumCircuit {
             qubit_count: builder.qubit_count, 
             bit_count: builder.bit_count, 
-            parameter_count: builder.parameter_count, 
-            instructions: builder.instructions.into_boxed_slice(), 
+            parameter_count: builder.parameter_count,
         })
     }
 
@@ -119,6 +114,12 @@ impl<'id> CircuitBuilder<'id> {
     #[inline]
     pub fn alloc_tuple<T: SymbolTuple<'id>>(&mut self) -> Result<T, QuantumCircuitError> {
         T::alloc(self)
+    }
+
+    #[inline]
+    #[must_use]
+    pub fn cond(&mut self) -> &mut Self {
+        todo!()
     }
 
     #[inline]
