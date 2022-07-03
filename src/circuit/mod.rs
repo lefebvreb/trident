@@ -65,11 +65,6 @@ impl QuantumCircuit {
     }
 
     #[inline]
-    pub fn bit_count(&self) -> usize {
-        self.bit_count as usize
-    }
-
-    #[inline]
     pub fn qubit_count(&self) -> usize {
         self.qubit_count as usize
     }
@@ -78,9 +73,12 @@ impl QuantumCircuit {
     pub fn parameter_count(&self) -> usize {
         self.parameter_count as usize
     }
-}
 
-impl<'id> CircuitBuilder<'id> {
+    #[inline]
+    pub fn bit_count(&self) -> usize {
+        self.bit_count as usize
+    }
+
     // Returns a mutable reference to the qubit count.
     #[inline]
     pub(crate) fn qubit_count_mut(&mut self) -> &mut u32 {
@@ -98,7 +96,9 @@ impl<'id> CircuitBuilder<'id> {
     pub(crate) fn bit_count_mut(&mut self) -> &mut u32 {
         &mut self.bit_count
     }
+}
 
+impl<'id> CircuitBuilder<'id> {
     #[inline]
     pub fn alloc<T: Symbol<'id>>(&mut self) -> Result<T, QuantumCircuitError> {
         T::alloc(self)

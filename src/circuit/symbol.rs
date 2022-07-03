@@ -57,67 +57,61 @@ pub trait Symbol<'id>: Clone + Copy + PartialEq + Eq + PartialOrd + Ord + Sized 
     fn alloc_list(circ: &mut CircuitBuilder<'id>, len: usize) -> Result<List<Self>, QuantumCircuitError> {
         let count = Self::count(circ);
         let start = *count;
-        checked_incr(count, len).map(|_| List::new(start..*count))
+        checked_incr(count, len).map(|_| List::from_range(start..*count))
     }
 }
 
-macro_rules! circuit_symbol_impl {
+macro_rules! symbols {
     { 
-        $(#[doc$($args: tt)*])* 
-        $name: ident,
-        count: $count: ident
+        $(
+            $(#[doc$($args: tt)*])* 
+            $name: ident: $count: ident,
+        )*
     } => {
-        $(#[doc$($args)*])*
-        #[repr(transparent)]
-        #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-        pub struct $name<'id> {
-            n: u32,
-            id: Id<'id>,
-        }
-
-        impl<'id> $name<'id> {
-            pub unsafe fn new_unchecked(n: u32) -> Self {
-                Self::new(n)
+        $(
+            $(#[doc$($args)*])*
+            #[repr(transparent)]
+            #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+            pub struct $name<'id> {
+                n: u32,
+                id: Id<'id>,
             }
-        }
-
-        impl<'id> SymbolPrivate<'id> for $name<'id> {
-            #[inline]
-            fn new(n: u32) -> Self {
-                Self { n, id: Id::default() }
+    
+            impl<'id> $name<'id> {
+                pub unsafe fn new_unchecked(n: u32) -> Self {
+                    Self::new(n)
+                }
             }
-        }
-
-        impl<'id> Symbol<'id> for $name<'id> {
-            #[inline]
-            fn id(self) -> u32 {
-                self.n
+    
+            impl<'id> SymbolPrivate<'id> for $name<'id> {
+                #[inline]
+                fn new(n: u32) -> Self {
+                    Self { n, id: Id::default() }
+                }
             }
-            
-            #[inline]
-            fn count<'b>(circ: &'b mut CircuitBuilder) -> &'b mut u32 {
-                circ.$count()
+    
+            impl<'id> Symbol<'id> for $name<'id> {
+                #[inline]
+                fn id(self) -> u32 {
+                    self.n
+                }
+                
+                #[inline]
+                fn count<'b>(circ: &'b mut CircuitBuilder) -> &'b mut u32 {
+                    circ.$count()
+                }
             }
-        }
+        )*
     }
 }
 
-circuit_symbol_impl! {
+symbols! {
     /// TODO: Doc
-    Qubit,
-    count: qubit_count_mut
-}
-
-circuit_symbol_impl! {
+    Qubit: qubit_count_mut,
     /// TODO: Doc
-    FormalParameter,
-    count: parameter_count_mut
-}
-
-circuit_symbol_impl! {
+    FormalParameter: parameter_count_mut,
     /// TODO: Doc
-    Bit,
-    count: bit_count_mut
+    Bit: bit_count_mut,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
@@ -128,17 +122,22 @@ pub struct List<T> {
 
 impl<'id, T: Symbol<'id> + 'id> List<T> {
     #[inline]
-    fn new(range: Range<u32>) -> Self {
+    fn from_range(range: Range<u32>) -> Self {
         List { range, _phantom: PhantomData }
     }
 
     #[inline]
-    pub unsafe fn new_unchecked(range: Range<u32>) -> Self {
-        List::new(range)
+    pub unsafe fn from_range_unchecked(range: Range<u32>) -> Self {
+        List::from_range(range)
     }
 
     #[inline]
-    pub fn range(&self) -> Range<u32> {
+    pub fn new(start: Qubit<'id>, end: Qubit<'id>) -> Option<Self> {
+        (start <= end).then(|| List::from_range(start.id()..end.id() + 1))
+    }
+
+    #[inline]
+    pub fn as_range(&self) -> Range<u32> {
         self.range.clone()
     }
 
@@ -153,8 +152,8 @@ impl<'id, T: Symbol<'id> + 'id> List<T> {
     }
 
     #[inline]
-    pub fn get(&self, id: usize) -> Option<T> {
-        (id < self.len()).then(|| T::new(id as u32 + self.range.start))
+    pub fn get(&self, n: usize) -> Option<T> {
+        (n < self.len()).then(|| T::new(n as u32 + self.range.start))
     }
 
     #[inline]
@@ -171,7 +170,7 @@ impl<'id, T: Symbol<'id> + 'id> List<T> {
 impl<'id, T: Symbol<'id> + 'id> From<T> for List<T> {
     #[inline]
     fn from(sym: T) -> Self {
-        Self::new(sym.id()..sym.id() + 1)
+        Self::from_range(sym.id()..sym.id() + 1)
     }
 }
 

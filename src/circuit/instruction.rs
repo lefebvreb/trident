@@ -13,9 +13,9 @@ macro_rules! operations {
         $(
             $(#[doc$($args: tt)*])* 
             $name: ident {
-                qubits: $qubits: literal,
-                parameters: $parameters: literal,
-                bits: $bits: literal,
+                qubits: $qubits: expr,
+                parameters: $parameters: expr,
+                bits: $bits: expr,
                 unitary: $unitary: literal,
                 label: $label: literal,
             },
@@ -36,24 +36,24 @@ macro_rules! operations {
             pub const ALL_OPERATIONS: &'static [Self] = &[$($name,)*];
 
             #[inline]
-            pub fn qubit_count(self) -> usize {
-                match self {
+            pub fn qubit_count(self) -> Option<usize> {
+                Some(match self {
                     $($name => $qubits,)*
-                }
+                })
             }
 
             #[inline]
-            pub fn parameter_count(self) -> usize {
-                match self {
+            pub fn parameter_count(self) -> Option<usize> {
+                Some(match self {
                     $($name => $parameters,)*
-                }
+                })
             }
 
             #[inline]
-            pub fn bit_count(self) -> usize {
-                match self {
+            pub fn bit_count(self) -> Option<usize> {
+                Some(match self {
                     $($name => $bits,)*
-                }
+                })
             }
 
             #[inline]
@@ -74,6 +74,10 @@ macro_rules! operations {
     }
 }
 
+macro_rules! variadic {
+    () => { None? }
+}
+
 operations! {
     /// No-operation, or nop.
     Nop {
@@ -83,24 +87,34 @@ operations! {
         unitary: false,
         label: "nop",
     },
-    /// The Hadamard gate.
+    /// Hadamard gate.
     H {
         qubits: 1,
         parameters: 0,
         bits: 0,
         unitary: true,
-        label: "H",
+        label: "h",
     },
-    /// The Pauli X gate, or NOT gate.
+    /// Pauli-X gate, or NOT gate.
     X {
         qubits: 1,
         parameters: 0,
         bits: 0,
         unitary: true,
-        label: "X",
+        label: "x",
     },
-    Barrier {
+    /// Rotation about the X-axis
+    Rx {
         qubits: 1,
+        parameters: 1,
+        bits: 0,
+        unitary: true,
+        label: "rx",
+    },
+    /// Barrier, a non-unitary operator, variadic over qubits. 
+    /// Prevents optimizations between it's left and right sides.
+    Barrier {
+        qubits: variadic!(),
         parameters: 0,
         bits: 0,
         unitary: false,
@@ -133,7 +147,7 @@ pub enum InstructionKind<'id> {
 impl Default for InstructionKind<'_> {
     #[inline]
     fn default() -> Self {
-        Self::Operation { kind: OperationKind::default(), controls: None }
+        Self::Operation { kind: Nop, controls: None }
     }
 }
 
@@ -262,4 +276,13 @@ impl InstructionRope {
 
 pub struct InstructionIter<'id> {
     _id: Id<'id>
+}
+
+impl<'id> Iterator for InstructionIter<'id> {
+    type Item = &'id Instruction<'id>;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        todo!()
+    }
 }

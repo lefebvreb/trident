@@ -1,6 +1,6 @@
 #![doc(html_logo_url = "https://raw.githubusercontent.com/L-Benjamin/trident/master/doc/logo.svg")]
 
-#![allow(unused)]
+#![allow(unused)] // temporary
 
 mod genericity;
 
