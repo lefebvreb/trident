@@ -28,7 +28,7 @@ impl QuantumCircuit {
     #[inline]
     pub fn new<F>(init: F) -> Result<Self, QuantumCircuitError>
     where
-        F: for<'id> FnOnce(&mut CircuitBuilder<'id>) -> Result<(), QuantumCircuitError>
+        F: for<'any> FnOnce(&mut CircuitBuilder<'any>) -> Result<(), QuantumCircuitError>
     {
         let mut builder = CircuitBuilder {
             _id: Id::default(),

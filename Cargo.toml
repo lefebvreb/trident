@@ -5,6 +5,9 @@ authors = ["Benjamin Lefebvre"]
 edition = "2021"
 version = "0.1.0"
 
+[package.metadata.docs.rs]
+rustdoc-args = ["--html-in-header", "doc/katex.html"]
+
 [dependencies]
 bitflags = "1"
 thiserror = "1"

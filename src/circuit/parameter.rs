@@ -54,7 +54,7 @@ impl<'id> From<FormalParameter<'id>> for Parameter<'id> {
     }
 }
 
-impl<'id> PartialEq for Parameter<'id> {
+impl PartialEq for Parameter<'_> {
     #[inline]
     fn eq(&self, rhs: &Self) -> bool {
         match (self.as_value(), rhs.as_value()) {
@@ -65,4 +65,4 @@ impl<'id> PartialEq for Parameter<'id> {
     }
 }
 
-impl<'id> Eq for Parameter<'id> {}
+impl Eq for Parameter<'_> {}
