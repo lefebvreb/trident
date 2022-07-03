@@ -2,8 +2,6 @@ use std::io::{Read, Write};
 use std::ops::Deref;
 use std::rc::Rc;
 
-use bitflags::bitflags;
-
 use crate::genericity::Id;
 
 use super::{QuantumCircuit, parameter};
@@ -11,7 +9,7 @@ use super::parameter::Parameter;
 use super::symbol::{Qubit, Bit};
 
 macro_rules! operations {
-    { 
+    {
         $(
             $(#[doc$($args: tt)*])* 
             $name: ident {
@@ -118,7 +116,7 @@ operations! {
 }
 
 impl Default for OperationKind {
-    #[inline(always)]
+    #[inline]
     fn default() -> Self {
         Nop
     }

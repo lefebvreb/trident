@@ -4,12 +4,12 @@ pub struct BitVec {
     data: Box<[u8]>,
 }
 
-#[inline(always)]
+#[inline]
 fn word(index: usize) -> usize {
     index >> 3
 }
 
-#[inline(always)]
+#[inline]
 fn mask(index: usize) -> u8 {
     1 << (index & 7)
 }

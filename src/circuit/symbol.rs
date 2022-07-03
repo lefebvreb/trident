@@ -8,17 +8,19 @@ use super::{CircuitBuilder, QuantumCircuitError};
 pub(crate) mod private {
     use crate::circuit::CircuitBuilder;
 
+    // Base trait implemented by the symbol types: Qubit, FormalParameter and Bit.
+    // Kept private and hidden away because misusing the new method would be unsound.
     #[doc(hidden)]
     pub trait SymbolPrivate<'id> {
         fn new(n: u32) -> Self;
-
-        fn count<'a>(circ: &'a mut CircuitBuilder<'id>) -> &'a mut u32;
     }
 }
 
 use private::SymbolPrivate;
 
-#[inline(always)]
+// Increases the borrowed integer a with the value n, if conversion is possible and no overflows occurs.
+// Else, returns the error QuantumCircuitError::AllocOverflow.
+#[inline]
 fn checked_incr(a: &mut u32, n: usize) -> Result<(), QuantumCircuitError> {
     n.try_into().ok()
         .and_then(|n| a.checked_add(n))
@@ -29,16 +31,18 @@ fn checked_incr(a: &mut u32, n: usize) -> Result<(), QuantumCircuitError> {
 pub trait Symbol<'id>: Clone + Copy + PartialEq + Eq + PartialOrd + Ord + Sized + SymbolPrivate<'id> + 'id {
     fn id(self) -> u32;
 
+    fn count<'circ>(circ: &'circ mut CircuitBuilder<'id>) -> &'circ mut u32;
+
     #[inline]
-    fn alloc(b: &mut CircuitBuilder<'id>) -> Result<Self, QuantumCircuitError> {
-        let count = Self::count(b);
+    fn alloc(circ: &mut CircuitBuilder<'id>) -> Result<Self, QuantumCircuitError> {
+        let count = Self::count(circ);
         let res = Self::new(*count);
         checked_incr(count, 1).map(|_| res)
     }
 
     #[inline]
-    fn alloc_n<const N: usize>(b: &mut CircuitBuilder<'id>) -> Result<[Self; N], QuantumCircuitError> {
-        let count = Self::count(b);
+    fn alloc_n<const N: usize>(circ: &mut CircuitBuilder<'id>) -> Result<[Self; N], QuantumCircuitError> {
+        let count = Self::count(circ);
         let mut start = *count;
         checked_incr(count, N).map(|_|
             [0; N].map(|_| {
@@ -50,8 +54,8 @@ pub trait Symbol<'id>: Clone + Copy + PartialEq + Eq + PartialOrd + Ord + Sized 
     }
 
     #[inline]
-    fn alloc_list(b: &mut CircuitBuilder<'id>, len: usize) -> Result<List<Self>, QuantumCircuitError> {
-        let count = Self::count(b);
+    fn alloc_list(circ: &mut CircuitBuilder<'id>, len: usize) -> Result<List<Self>, QuantumCircuitError> {
+        let count = Self::count(circ);
         let start = *count;
         checked_incr(count, len).map(|_| List::new(start..*count))
     }
@@ -82,17 +86,17 @@ macro_rules! circuit_symbol_impl {
             fn new(n: u32) -> Self {
                 Self { n, id: Id::default() }
             }
-            
-            #[inline]
-            fn count<'b>(circ: &'b mut CircuitBuilder) -> &'b mut u32 {
-                circ.$count()
-            }
         }
 
         impl<'id> Symbol<'id> for $name<'id> {
             #[inline]
             fn id(self) -> u32 {
                 self.n
+            }
+            
+            #[inline]
+            fn count<'b>(circ: &'b mut CircuitBuilder) -> &'b mut u32 {
+                circ.$count()
             }
         }
     }
@@ -116,6 +120,7 @@ circuit_symbol_impl! {
     count: bit_count_mut
 }
 
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct List<T> {
     range: Range<u32>,
     _phantom: PhantomData<T>,
@@ -158,8 +163,8 @@ impl<'id, T: Symbol<'id> + 'id> List<T> {
     }
 
     #[inline]
-    pub fn iter(&self) -> impl Iterator<Item = T> + 'id {
-        self.range.clone().map(T::new)
+    pub fn iter(&self) -> SymbolIter<T> {
+        SymbolIter { inner: self.clone() }
     }
 }
 
@@ -167,6 +172,31 @@ impl<'id, T: Symbol<'id> + 'id> From<T> for List<T> {
     #[inline]
     fn from(sym: T) -> Self {
         Self::new(sym.id()..sym.id() + 1)
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub struct SymbolIter<T> {
+    inner: List<T>,
+}
+
+impl<'id, T: Symbol<'id> + 'id> Iterator for SymbolIter<T> {
+    type Item = T;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        self.inner.range.next().map(T::new)
+    }
+}
+
+impl<'id, T: Symbol<'id> + 'id> IntoIterator for List<T> {
+    type Item = T;
+
+    type IntoIter = SymbolIter<T>;
+
+    #[inline]
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
     }
 }
 
