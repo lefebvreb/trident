@@ -1,4 +1,4 @@
-#![doc(html_logo_url = "https://raw.githubusercontent.com/L-Benjamin/trident/master/doc/logo.svg")]
+#![doc(html_logo_url = "https://raw.githubusercontent.com/L-Benjamin/trident/master/logo.svg")]
 
 #![allow(unused)] // temporary
 

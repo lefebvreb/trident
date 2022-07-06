@@ -1,4 +1,4 @@
-<img align="left" alt="" src="doc/logo.svg" height="150"/>
+<img align="left" alt="" src="logo.svg" height="150"/>
 
 # Trident
 
