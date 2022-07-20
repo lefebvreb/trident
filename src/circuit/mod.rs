@@ -1,5 +1,5 @@
 pub mod instruction;
-pub mod gate;
+pub mod operation;
 pub mod parameter;
 pub mod symbol;
 
