@@ -1,5 +1,5 @@
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub struct BitVec {
+pub struct BitSet {
     size: usize,
     data: Box<[u8]>,
 }
@@ -14,7 +14,7 @@ fn mask(index: usize) -> u8 {
     1 << (index & 7)
 }
 
-impl BitVec {
+impl BitSet {
     #[inline]
     pub fn new(size: usize) -> Self {
         Self {
@@ -34,7 +34,11 @@ impl BitVec {
     }
 
     #[inline]
-    pub fn set(&mut self, index: usize) -> Option<()> {
-        (index < self.size).then(|| self.data[word(index)] |= mask(index))
+    pub fn set(&mut self, index: usize, value: bool) -> Option<()> {
+        (index < self.size).then(|| if value {
+            self.data[word(index)] |= mask(index)
+        } else {
+            self.data[word(index)] &= !mask(index)
+        })
     }
 }
