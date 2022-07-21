@@ -1,15 +1,18 @@
 use std::marker::PhantomData;
+use std::mem;
 use std::ops::Range;
 
 use crate::genericity::Id;
 
-use super::{CircuitBuilder, QuantumCircuitError};
+use super::{storage, CircuitBuilder, QuantumCircuitError};
 
 pub(crate) mod private {
+    //! Private module for the symbol private trait.
+
     use crate::circuit::CircuitBuilder;
 
-    // Base trait implemented by the symbol types: Qubit, FormalParameter and Bit.
-    // Kept private and hidden away because misusing the new method would be unsound.
+    /// Base trait implemented by the symbol types: Qubit, FormalParameter and Bit.
+    /// Kept private and hidden away because misusing the new method would be unsound.
     #[doc(hidden)]
     pub trait SymbolPrivate<'id> {
         fn new(n: u32) -> Self;
@@ -18,8 +21,8 @@ pub(crate) mod private {
 
 use private::SymbolPrivate;
 
-// Increases the borrowed integer a with the value n, if conversion is possible and no overflows occurs.
-// Else, returns the error QuantumCircuitError::AllocOverflow.
+/// Increases the borrowed integer a with the value n, if conversion is possible and no overflows occurs.
+/// Else, returns the error QuantumCircuitError::AllocOverflow.
 #[inline]
 fn checked_incr(a: &mut u32, n: usize) -> Result<(), QuantumCircuitError> {
     n.try_into().ok()
@@ -76,10 +79,40 @@ macro_rules! symbols {
                 n: u32,
                 id: Id<'id>,
             }
-    
+
             impl<'id> $name<'id> {
-                pub unsafe fn new_unchecked(n: u32) -> Self {
+                #[inline]
+                pub fn new_unchecked(n: u32) -> Self {
                     Self::new(n)
+                }
+
+                /// Reads a single symbol from the source.
+                #[inline]
+                pub(crate) fn read(src: &mut &[u32]) -> Self {
+                    Self::new(storage::read(src))
+                }
+
+                /// Reads a slice of symbols from the source.
+                #[inline]
+                pub(crate) fn reads(src: &mut &[u32], n: u32) -> &'id [Self] {
+                    let slice = storage::reads(src, n);
+                    // SAFETY: Self is transparent to u32, transmute is therefore ok.
+                    unsafe { mem::transmute(slice) }
+                }
+
+                /// Writes a single symbol to the destination.
+                #[inline]
+                pub(crate) fn write(dest: &mut Vec<u32>, sym: Self) {
+                    storage::write(dest, sym.id());
+                }
+
+                /// Writes a slice of symbols to the destination. Does not write the length of the
+                /// slice, as it must be done manually.
+                #[inline]
+                pub(crate) fn writes(dest: &mut Vec<u32>, syms: &[Self]) {
+                    // SAFETY: Self is transparent to u32, transmute is therefore ok.
+                    let slice = unsafe { mem::transmute(syms) };
+                    storage::writes(dest, slice);
                 }
             }
     
@@ -127,7 +160,7 @@ impl<'id, T: Symbol<'id> + 'id> List<T> {
     }
 
     #[inline]
-    pub unsafe fn from_range_unchecked(range: Range<u32>) -> Self {
+    pub fn from_range_unchecked(range: Range<u32>) -> Self {
         List::from_range(range)
     }
 

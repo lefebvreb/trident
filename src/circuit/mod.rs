@@ -3,6 +3,8 @@ pub mod operation;
 pub mod parameter;
 pub mod symbol;
 
+pub(crate) mod storage;
+
 use std::default;
 use std::ops::{Deref, DerefMut};
 
@@ -79,27 +81,27 @@ impl QuantumCircuit {
     pub fn bit_count(&self) -> usize {
         self.bit_count as usize
     }
+}
 
-    // Returns a mutable reference to the qubit count.
+impl<'id> CircuitBuilder<'id> {
+    /// Returns a mutable reference to the qubit count.
     #[inline]
     pub(crate) fn qubit_count_mut(&mut self) -> &mut u32 {
         &mut self.qubit_count
     }
 
-    // Returns a mutable reference to the parameter count.
+    /// Returns a mutable reference to the parameter count.
     #[inline]
     pub(crate) fn parameter_count_mut(&mut self) -> &mut u32 {
         &mut self.parameter_count
     }
 
-    // Returns a mutable reference to the bit count.
+    /// Returns a mutable reference to the bit count.
     #[inline]
     pub(crate) fn bit_count_mut(&mut self) -> &mut u32 {
         &mut self.bit_count
     }
-}
 
-impl<'id> CircuitBuilder<'id> {
     #[inline]
     pub fn alloc<T: Symbol<'id>>(&mut self) -> Result<T, QuantumCircuitError> {
         T::alloc(self)

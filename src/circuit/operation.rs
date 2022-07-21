@@ -51,24 +51,28 @@ macro_rules! operations {
         }
 
         impl OpKind {
+            #[inline]
             pub fn qubits(self) -> Arity {
                 match self {
                     $(Self::$name => $qubits.into(),)*
                 }
             }
 
+            #[inline]
             pub fn bits(self) -> Arity {
                 match self {
                     $(Self::$name => $bits.into(),)*
                 }
             }
 
+            #[inline]
             pub fn parameters(self) -> Arity {
                 match self {
                     $(Self::$name => $parameters.into(),)*
                 }
             }
 
+            #[inline]
             pub fn is_unitary(self) -> bool {
                 match self {
                     $(Self::$name => $unitary,)*

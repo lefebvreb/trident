@@ -1,67 +1,42 @@
 use std::convert::Infallible;
-use std::ops::Deref;
-use std::rc::Rc;
+use std::mem;
 
+use crate::bitset::BitSet;
 use crate::genericity::Id;
 
 use super::operation::OpKind;
-use super::{QuantumCircuit, parameter};
+use super::{QuantumCircuit, parameter, storage};
 use super::parameter::Parameter;
 use super::symbol::{Qubit, Bit};
 
-pub trait InstrRead {
-    fn is_empty(&self) -> bool;
-
-    fn len(&self) -> u32;
-
-    fn read_word(&mut self) -> u32;
-
-    fn read_words(&mut self, n: u32) -> &[u32];
+pub struct Compute<'id, T> {
+    pub bits: &'id [Bit<'id>],
+    pub func: fn(BitSet) -> T,
 }
 
-impl InstrRead for &[u32] {
+impl<'id, T> Compute<'id, T> {
     #[inline]
-    fn is_empty(&self) -> bool {
-        <[u32]>::is_empty(self)
+    pub(crate) fn read(src: &mut &[u32]) -> Self {
+        Self {
+            bits: {
+                let n = storage::read(src);
+                Bit::reads(src, n)
+            },
+            func: {
+                let data = [(); storage::USIZE_LEN].map(|_| storage::read(src));
+                // SAFETY: we know there is such a function pointer there.
+                unsafe { mem::transmute(data) }
+            },
+        }
     }
 
     #[inline]
-    fn len(&self) -> u32 {
-        <[u32]>::len(self) as u32
-    }
-
-    #[inline]
-    fn read_word(&mut self) -> u32 {
-        // TODO: replace with <[T]>::take_first when it is eventually stabilized
-        let (&front, tail) = self.split_first().unwrap();
-        *self = tail;
-        front
-    }
-
-    #[inline]
-    fn read_words(&mut self, n: u32) -> &[u32] {
-        // TODO: replace with <[T]>::take when it is eventually stabilized
-        let (left, right) = self.split_at(n as usize);
-        *self = right;
-        left
-    }
-}
-
-pub trait InstrWrite {
-    fn write_word(&mut self, word: u32);
-
-    fn write_words(&mut self, words: &[u32]);
-}
-
-impl InstrWrite for Vec<u32> {
-    #[inline]
-    fn write_word(&mut self, word: u32) {
-        self.push(word);
-    }
-
-    #[inline]
-    fn write_words(&mut self, words: &[u32]) {
-        self.extend(words)
+    pub(crate) fn write(&self, dest: &mut Vec<u32>) {
+        storage::write(dest, self.bits.len() as u32);
+        Bit::writes(dest, self.bits);
+        // SAFETY: array of u32 accepts any bit pattern.
+        let data: [u32; storage::USIZE_LEN] = unsafe { mem::transmute(self.func) };
+        data.iter().for_each(|&n| storage::write(dest, n));
     }
 }
 
@@ -78,7 +53,7 @@ macro_rules! modifiers {
         }
 
         impl Modifier<'_> {
-            pub fn write<W: InstrWrite>(&self, writer: &mut W) {
+            pub fn write(&self, dest: &mut Vec<u32>) {
                 match self {
                     $(
                         Self::$name $(($inner))? => {
@@ -94,6 +69,7 @@ macro_rules! modifiers {
 
 modifiers! {
     IfBit(inner: Bit<'id>) => 0,
+    IfCompute(inner: Compute<'id, ()>) => 1,
 }
 
 #[derive(Default)]
@@ -106,11 +82,13 @@ pub struct Instr<'id> {
 }
 
 impl Instr<'_> {
-    pub fn write<W: InstrWrite>(&self, writer: &mut W) {
+    #[inline]
+    pub(crate) fn read(&mut self, src: &mut &[u32]) {
 
     }
 
-    pub fn read<R: InstrRead>(&mut self, reader: &mut R) {
+    #[inline]
+    pub(crate) fn write(&self, dest: &mut Vec<u32>) {
 
     }
 }
@@ -146,7 +124,7 @@ impl Instr<'_> {
 pub trait InstrSet {
     type Error;
 
-    fn transpile<R: InstrRead, W: InstrWrite>(reader: &mut R, writer: &mut W) -> Result<(), Self::Error>;
+    fn transpile(src: &mut &[u32], dest: &mut Vec<u32>) -> Result<(), Self::Error>;
 }
 
 pub struct Complete;
@@ -154,8 +132,8 @@ pub struct Complete;
 impl InstrSet for Complete {
     type Error = Infallible;
 
-    fn transpile<R: InstrRead, W: InstrWrite>(reader: &mut R, writer: &mut W) -> Result<(), Self::Error> {
-        writer.write_words(reader.read_words(reader.len()));
+    fn transpile(src: &mut &[u32], dest: &mut Vec<u32>) -> Result<(), Self::Error> {
+        dest.extend(*src);
         Ok(())
     }
 }
