@@ -20,7 +20,8 @@ impl<'id, T> Compute<'id, T> {
         Self {
             bits: {
                 let n = storage::read(src);
-                Bit::reads(src, n)
+                todo!()
+                //Bit::reads(src, n)
             },
             func: {
                 let data = [(); storage::USIZE_LEN].map(|_| storage::read(src));
@@ -33,7 +34,8 @@ impl<'id, T> Compute<'id, T> {
     #[inline]
     pub(crate) fn write(&self, dest: &mut Vec<u32>) {
         storage::write(dest, self.bits.len() as u32);
-        Bit::writes(dest, self.bits);
+        todo!();
+        //Bit::writes(dest, self.bits);
         // SAFETY: array of u32 accepts any bit pattern.
         let data: [u32; storage::USIZE_LEN] = unsafe { mem::transmute(self.func) };
         data.iter().for_each(|&n| storage::write(dest, n));

@@ -1,9 +1,13 @@
+use std::mem;
+
 use crate::genericity::Id;
 
+use super::storage;
 use super::symbol::{FormalParameter, Symbol};
 use super::symbol::private::SymbolPrivate;
 
-#[derive(Clone, Copy, Debug)]
+#[repr(transparent)]
+#[derive(Clone, Copy, Eq, Debug)]
 pub struct Parameter<'id> {
     _id: Id<'id>,
     bits: u64,
@@ -64,5 +68,3 @@ impl PartialEq for Parameter<'_> {
         }
     }
 }
-
-impl Eq for Parameter<'_> {}

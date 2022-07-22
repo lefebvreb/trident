@@ -15,39 +15,45 @@ pub(crate) mod private {
     /// Kept private and hidden away because misusing the new method would be unsound.
     #[doc(hidden)]
     pub trait SymbolPrivate<'id> {
+        /// Returns a new symbol with the value of `n`. This method is not unsafe but may cause
+        /// logical bugs is wrongly used. This is why it is private.
         fn new(n: u32) -> Self;
     }
 }
 
 use private::SymbolPrivate;
 
-/// Increases the borrowed integer a with the value n, if conversion is possible and no overflows occurs.
-/// Else, returns the error QuantumCircuitError::AllocOverflow.
-#[inline]
-fn checked_incr(a: &mut u32, n: usize) -> Result<(), QuantumCircuitError> {
-    n.try_into().ok()
-        .and_then(|n| a.checked_add(n))
-        .map(|n| *a = n)
-        .ok_or(QuantumCircuitError::AllocOverflow)
-}
-
 pub trait Symbol<'id>: Clone + Copy + PartialEq + Eq + PartialOrd + Ord + Sized + SymbolPrivate<'id> + 'id {
+    /// The maximum number of symbols of type `Self` that may be allocated in a single quantum circuit.
+    const MAX: u32 = u32::MAX - 1;
+    
     fn id(self) -> u32;
 
     fn count<'circ>(circ: &'circ mut CircuitBuilder<'id>) -> &'circ mut u32;
+
+    /// Increases the borrowed integer `a` with the value `n` if `*a + n < Self::MAX`.
+    /// Else, returns a `Err(QuantumCircuitError::AllocOverflow)`.
+    /// This is used when allocating symbols of type `Self`.
+    #[inline]
+    #[doc(hidden)]
+    fn checked_incr(a: &mut u32, n: usize) -> Result<(), QuantumCircuitError> {
+        (n < (Self::MAX - *a) as usize)
+            .then(|| *a += n as u32)
+            .ok_or(QuantumCircuitError::AllocOverflow)
+    }
 
     #[inline]
     fn alloc(circ: &mut CircuitBuilder<'id>) -> Result<Self, QuantumCircuitError> {
         let count = Self::count(circ);
         let res = Self::new(*count);
-        checked_incr(count, 1).map(|_| res)
+        Self::checked_incr(count, 1).map(|_| res)
     }
 
     #[inline]
     fn alloc_n<const N: usize>(circ: &mut CircuitBuilder<'id>) -> Result<[Self; N], QuantumCircuitError> {
         let count = Self::count(circ);
         let mut start = *count;
-        checked_incr(count, N).map(|_|
+        Self::checked_incr(count, N).map(|_|
             [0; N].map(|_| {
                 let res = Self::new(start);
                 start += 1;
@@ -60,15 +66,19 @@ pub trait Symbol<'id>: Clone + Copy + PartialEq + Eq + PartialOrd + Ord + Sized 
     fn alloc_list(circ: &mut CircuitBuilder<'id>, len: usize) -> Result<List<Self>, QuantumCircuitError> {
         let count = Self::count(circ);
         let start = *count;
-        checked_incr(count, len).map(|_| List::from_range(start..*count))
+        Self::checked_incr(count, len).map(|_| List::from_range(start..*count))
     }
 }
 
+/// Used to define the different symbols types.
 macro_rules! symbols {
-    { 
+    {
         $(
             $(#[doc$($args: tt)*])* 
-            $name: ident: $count: ident,
+            $name: ident {
+                count: $count: ident,
+                $(max: $max: expr,)?
+            }
         )*
     } => {
         $(
@@ -85,35 +95,6 @@ macro_rules! symbols {
                 pub fn new_unchecked(n: u32) -> Self {
                     Self::new(n)
                 }
-
-                /// Reads a single symbol from the source.
-                #[inline]
-                pub(crate) fn read(src: &mut &[u32]) -> Self {
-                    Self::new(storage::read(src))
-                }
-
-                /// Reads a slice of symbols from the source.
-                #[inline]
-                pub(crate) fn reads(src: &mut &[u32], n: u32) -> &'id [Self] {
-                    let slice = storage::reads(src, n);
-                    // SAFETY: Self is transparent to u32, transmute is therefore ok.
-                    unsafe { mem::transmute(slice) }
-                }
-
-                /// Writes a single symbol to the destination.
-                #[inline]
-                pub(crate) fn write(dest: &mut Vec<u32>, sym: Self) {
-                    storage::write(dest, sym.id());
-                }
-
-                /// Writes a slice of symbols to the destination. Does not write the length of the
-                /// slice, as it must be done manually.
-                #[inline]
-                pub(crate) fn writes(dest: &mut Vec<u32>, syms: &[Self]) {
-                    // SAFETY: Self is transparent to u32, transmute is therefore ok.
-                    let slice = unsafe { mem::transmute(syms) };
-                    storage::writes(dest, slice);
-                }
             }
     
             impl<'id> SymbolPrivate<'id> for $name<'id> {
@@ -124,6 +105,8 @@ macro_rules! symbols {
             }
     
             impl<'id> Symbol<'id> for $name<'id> {
+                $(const MAX: u32 = $max;)?
+
                 #[inline]
                 fn id(self) -> u32 {
                     self.n
@@ -140,11 +123,20 @@ macro_rules! symbols {
 
 symbols! {
     /// TODO: Doc
-    Qubit: qubit_count_mut,
+    Qubit {
+        count: qubit_count_mut,
+    }
+
     /// TODO: Doc
-    FormalParameter: parameter_count_mut,
+    FormalParameter {
+        count: parameter_count_mut,
+    }
+
     /// TODO: Doc
-    Bit: bit_count_mut,
+    Bit {
+        count: bit_count_mut,
+        max: (1 << f32::MANTISSA_DIGITS) - 1,
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]

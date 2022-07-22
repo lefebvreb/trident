@@ -1,3 +1,4 @@
+use std::intrinsics::transmute;
 use std::mem;
 
 /// The length of usizes in words.
