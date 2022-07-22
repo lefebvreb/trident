@@ -1,8 +1,5 @@
-use std::mem;
-
 use crate::genericity::Id;
 
-use super::storage;
 use super::symbol::{FormalParameter, Symbol};
 use super::symbol::private::SymbolPrivate;
 

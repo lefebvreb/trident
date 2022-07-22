@@ -1,20 +1,20 @@
 use std::convert::Infallible;
-use std::mem;
 
 use crate::bitset::BitSet;
-use crate::genericity::Id;
 
 use super::operation::OpKind;
-use super::{QuantumCircuit, parameter, storage};
+use super::storage;
 use super::parameter::Parameter;
 use super::symbol::{Qubit, Bit};
 
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Compute<'id, T> {
     pub bits: &'id [Bit<'id>],
     pub func: fn(BitSet) -> T,
 }
 
 impl<'id, T> Compute<'id, T> {
+    /// Writes the compute to the destination.
     #[inline]
     pub(crate) fn write(&self, dest: &mut Vec<u32>) {
         storage::write(dest, self.bits.len() as u32);
@@ -22,6 +22,7 @@ impl<'id, T> Compute<'id, T> {
         storage::write(dest, self.func);
     }
 
+    /// Reads the compute from the destination.
     #[inline]
     pub(crate) fn read(src: &mut &'id [u32]) -> Self {
         Self {
@@ -37,24 +38,45 @@ impl<'id, T> Compute<'id, T> {
 macro_rules! modifiers {
     {
         $(
-            $name: ident $(($inner: ident: $payload: ty))? => $int: literal,
+            $(#[doc$($args: tt)*])* 
+            $name: ident = $int: literal $({
+                $inner: ident: $payload: ty,
+                write: $write: expr,
+                read: $read: expr,
+            })?,
         )*
     } => {
+        #[non_exhaustive]
+        #[derive(Clone, PartialEq, Eq, Debug)]
         pub enum Modifier<'id> {
             $(
+                $(#[doc$($args)*])*
                 $name $(($payload))?,
             )*
         }
 
-        impl Modifier<'_> {
-            pub fn write(&self, dest: &mut Vec<u32>) {
+        impl<'id> Modifier<'id> {
+            /// Writes the modifier to the destination.
+            #[inline]
+            pub(crate) fn write(&self, dest: &mut Vec<u32>) {
                 match self {
                     $(
                         Self::$name $(($inner))? => {
-                            
+                            storage::write(dest, $int as u32);
+                            $($write(dest);)?
                         }
-                        _ => (),
                     )*
+                }
+            }
+
+            /// Reads the modifier from the destination.
+            #[inline]
+            pub(crate) fn read(src: &mut &'id [u32]) -> Self {
+                match storage::read::<u32>(src) {
+                    $(
+                        $int => Self::$name $(($read(src)))?,
+                    )*
+                    _ => panic!("invalid modifier")
                 }
             }
         }
@@ -62,58 +84,69 @@ macro_rules! modifiers {
 }
 
 modifiers! {
-    IfBit(inner: Bit<'id>) => 0,
-    IfCompute(inner: Compute<'id, ()>) => 1,
+    /// Only perform the instruction if the bit is `true`.
+    IfBit = 0 {
+        inner: Bit<'id>,
+        write: |dest| storage::write(dest, inner),
+        read: storage::read,
+    },
+    /// Only perform the instruction if the result of the compute is `true`.
+    IfCompute = 1 {
+        inner: Compute<'id, bool>,
+        write: |dest| inner.write(dest),
+        read: |src| Compute::read(src),
+    },
+    /// Perform the instruction while the bit is `true`.
+    WhileBit = 2 {
+        inner: Bit<'id>,
+        write: |dest| storage::write(dest, inner),
+        read: storage::read,
+    },
+    /// Perform the instruction while the result of the compute is `true`.
+    WhileCompute = 3 {
+        inner: Compute<'id, bool>,
+        write: |dest| inner.write(dest),
+        read: |src| Compute::read(src),
+    },
+    /// Perform the instruction as many times as the provided integer.
+    ForConst = 4 {
+        inner: u32,
+        write: |dest| storage::write(dest, inner),
+        read: storage::read,
+    },
+    /// Perform the instruction as many times as the result of the compute.
+    ForCompute = 5 {
+        inner: Compute<'id, u32>,
+        write: |dest| inner.write(dest),
+        read: |src| Compute::read(src),
+    },
 }
 
-#[derive(Default)]
+#[derive(Clone, PartialEq, Eq, Default, Debug)]
 pub struct Instr<'id> {
+    /// The base operation type.
     pub kind: OpKind,
+    /// The qubits to apply this operation to.
     pub qubits: &'id [Qubit<'id>],
+    /// The bits to apply this operation to.
     pub bits: &'id [Bit<'id>],
+    /// The parameters this operation depends on.
     pub parameters: &'id [Parameter<'id>],
+    /// This operation's modifier, if there is one.
     pub modifier: Option<Modifier<'id>>,
 }
 
 impl Instr<'_> {
     #[inline]
-    pub(crate) fn read(&mut self, src: &mut &[u32]) {
+    pub(crate) fn write(&self, dest: &mut Vec<u32>) {
 
     }
 
     #[inline]
-    pub(crate) fn write(&self, dest: &mut Vec<u32>) {
+    pub(crate) fn read(&mut self, src: &mut &[u32]) {
 
     }
 }
-
-// flags: has_modifier + kind
-// qubit_count?
-// qubits
-// bit_count?
-// bits
-// parameter_count?
-// parameters
-// modifier_kind
-// modifier_payload?
-
-// examples:
-
-// flags: no + h
-// qubits: t
-// => 8
-
-// flags: no + compute
-// payload: 
-//  out_count
-//  out_bits
-//  fn(&mut BitSet)
-// => 16 + 4n
-
-// flags: yes + cx
-// qubits: c, t
-// condition_kind: loop
-// condition_payload: bit
 
 pub trait InstrSet {
     type Error;
@@ -121,11 +154,12 @@ pub trait InstrSet {
     fn transpile(src: &mut &[u32], dest: &mut Vec<u32>) -> Result<(), Self::Error>;
 }
 
-pub struct Complete;
+pub struct CompleteInstrSet;
 
-impl InstrSet for Complete {
+impl InstrSet for CompleteInstrSet {
     type Error = Infallible;
 
+    #[inline]
     fn transpile(src: &mut &[u32], dest: &mut Vec<u32>) -> Result<(), Self::Error> {
         dest.extend(*src);
         Ok(())

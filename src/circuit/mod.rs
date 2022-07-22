@@ -1,19 +1,17 @@
+mod storage;
+
 pub mod instruction;
 pub mod operation;
 pub mod parameter;
 pub mod symbol;
 
-pub(crate) mod storage;
-
-use std::default;
 use std::ops::{Deref, DerefMut};
 
 use thiserror::Error;
 
 use crate::genericity::Id;
 
-use parameter::Parameter;
-use symbol::{SymbolTuple, Symbol, Qubit, Bit, List};
+use symbol::{SymbolTuple, Symbol, List};
 
 #[derive(Default)]
 pub struct QuantumCircuit {

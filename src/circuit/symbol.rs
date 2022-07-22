@@ -1,15 +1,12 @@
 use std::marker::PhantomData;
-use std::mem;
 use std::ops::Range;
 
 use crate::genericity::Id;
 
-use super::{storage, CircuitBuilder, QuantumCircuitError};
+use super::{CircuitBuilder, QuantumCircuitError};
 
 pub(crate) mod private {
     //! Private module for the symbol private trait.
-
-    use crate::circuit::CircuitBuilder;
 
     /// Base trait implemented by the symbol types: Qubit, FormalParameter and Bit.
     /// Kept private and hidden away because misusing the new method would be unsound.

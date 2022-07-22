@@ -1,12 +1,10 @@
-use std::num::NonZeroU32;
-
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
 pub struct Arity(u32);
 
 impl From<u32> for Arity {
     #[inline]
     fn from(n: u32) -> Self {
-        Self(u32::MAX)
+        Self(n)
     }
 }
 
@@ -44,7 +42,7 @@ macro_rules! operations {
         )*
     } => {
         #[non_exhaustive]
-        #[derive(Default, Copy, Clone, PartialEq, Eq)]
+        #[derive(Clone, PartialEq, Eq, Default, Debug)]
         pub enum OpKind {
             #[default]
             $($name,)*

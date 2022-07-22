@@ -1,16 +1,19 @@
+//! This module exposes functions to write/read various types from vectors/slices
+//! of Word. This is intended. 
+
 use std::mem;
 
 /// The type used for storage.
-pub(crate) type Word = u32;
+type Word = u32;
 
 /// Size of a Word in bytes.
-pub(crate) const WORD_SIZE: usize = mem::size_of::<Word>();
+const WORD_SIZE: usize = mem::size_of::<Word>();
 
 /// Alignement of a Word in bytes.
-pub(crate) const WORD_ALIGN: usize = mem::align_of::<Word>();
+const WORD_ALIGN: usize = mem::align_of::<Word>();
 
 /// Twice the size of a Word in bytes.
-pub(crate) const TWO_WORD_SIZE: usize = 2 * WORD_SIZE;
+const TWO_WORD_SIZE: usize = 2 * WORD_SIZE;
 
 /// Reads a single Word from the source.
 /// Panics if the source is empty.
@@ -45,6 +48,9 @@ pub(crate) fn read<T>(src: &mut &[Word]) -> T {
 /// Reads a slice of T from the source. 
 /// Panics if the size and align of T are not equal to that of Word, or
 /// the source is empty.
+/// 
+/// For robustness this function should only be used when T is of `repr(transparent)` with
+/// Word.
 #[inline(always)]
 pub(crate) fn read_slice<'a, T>(src: &mut &'a [Word], n: u32) -> &'a [T] {
     if mem::size_of::<T>() != WORD_SIZE || mem::align_of::<T>() != WORD_ALIGN {
@@ -78,7 +84,10 @@ pub(crate) fn write<T>(dest: &mut Vec<Word>, data: T) {
 }
 
 /// Writes a slice of T to the destination.
-/// Panics if the size and align of T are not equal to that of Word,
+/// Panics if the size and align of T are not equal to that of Word.
+/// 
+/// For robustness this function should only be used when T is of `repr(transparent)` with
+/// Word.
 #[inline(always)]
 pub(crate) fn write_slice<T>(dest: &mut Vec<Word>, slice: &[T]) {
     if mem::size_of::<T>() != WORD_SIZE || mem::align_of::<T>() != WORD_ALIGN {

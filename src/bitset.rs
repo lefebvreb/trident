@@ -4,12 +4,14 @@ pub struct BitSet {
     data: Box<[u8]>,
 }
 
-#[inline]
+/// Returns the index of the word (byte) that contains the `index`th bit.
+#[inline(always)]
 fn word(index: usize) -> usize {
     index >> 3
 }
 
-#[inline]
+/// Returns a mask of the position of the `index`th bit in it's containing word (byte).
+#[inline(always)]
 fn mask(index: usize) -> u8 {
     1 << (index & 7)
 }
