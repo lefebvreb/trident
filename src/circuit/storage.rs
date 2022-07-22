@@ -52,12 +52,12 @@ pub(crate) fn read<T>(src: &mut &[Word]) -> T {
 /// For robustness this function should only be used when T is of `repr(transparent)` with
 /// Word.
 #[inline(always)]
-pub(crate) fn read_slice<'a, T>(src: &mut &'a [Word], n: u32) -> &'a [T] {
+pub(crate) fn read_slice<'a, T>(src: &mut &'a [Word], len: u32) -> &'a [T] {
     if mem::size_of::<T>() != WORD_SIZE || mem::align_of::<T>() != WORD_ALIGN {
         panic!("read_slice only supports type of word size and align");
     }
 
-    let (left, right) = src.split_at(n as usize);
+    let (left, right) = src.split_at(len as usize);
     *src = right;
 
     // SAFETY: T and Word have the same size and align.

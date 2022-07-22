@@ -9,4 +9,5 @@ version = "0.1.0"
 rustdoc-args = ["--html-in-header", "doc/katex.html"]
 
 [dependencies]
+bitflags = "1"
 thiserror = "1"
