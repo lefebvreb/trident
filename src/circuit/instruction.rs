@@ -16,29 +16,21 @@ pub struct Compute<'id, T> {
 
 impl<'id, T> Compute<'id, T> {
     #[inline]
-    pub(crate) fn read(src: &mut &[u32]) -> Self {
-        Self {
-            bits: {
-                let n = storage::read(src);
-                todo!()
-                //Bit::reads(src, n)
-            },
-            func: {
-                let data = [(); storage::USIZE_LEN].map(|_| storage::read(src));
-                // SAFETY: we know there is such a function pointer there.
-                unsafe { mem::transmute(data) }
-            },
-        }
+    pub(crate) fn write(&self, dest: &mut Vec<u32>) {
+        storage::write(dest, self.bits.len() as u32);
+        storage::write_slice(dest, self.bits);
+        storage::write(dest, self.func);
     }
 
     #[inline]
-    pub(crate) fn write(&self, dest: &mut Vec<u32>) {
-        storage::write(dest, self.bits.len() as u32);
-        todo!();
-        //Bit::writes(dest, self.bits);
-        // SAFETY: array of u32 accepts any bit pattern.
-        let data: [u32; storage::USIZE_LEN] = unsafe { mem::transmute(self.func) };
-        data.iter().for_each(|&n| storage::write(dest, n));
+    pub(crate) fn read(src: &mut &'id [u32]) -> Self {
+        Self {
+            bits: {
+                let n = storage::read(src);
+                storage::read_slice(src, n)
+            },
+            func: storage::read(src),
+        }
     }
 }
 

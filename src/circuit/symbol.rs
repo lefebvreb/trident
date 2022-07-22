@@ -135,7 +135,7 @@ symbols! {
     /// TODO: Doc
     Bit {
         count: bit_count_mut,
-        max: (1 << f32::MANTISSA_DIGITS) - 1,
+        max: 1 << f32::MANTISSA_DIGITS,
     }
 }
 
