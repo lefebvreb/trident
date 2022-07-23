@@ -49,6 +49,7 @@ macro_rules! operations {
                 bits: $bits: expr,
                 parameters: $parameters: expr,
                 unitary: $unitary: literal,
+                label: $label: literal,
                 $(
                     payload: {
                         $inner: ident: $payload: ty,
@@ -129,6 +130,14 @@ macro_rules! operations {
                     $(Self::$name $(($inner))? => $unitary,)*
                 }
             }
+
+            #[inline]
+            #[allow(unused_variables)]
+            pub fn label(&self) -> &'static str {
+                match self {
+                    $(Self::$name $(($inner))? => $label,)*
+                }
+            }
         }
     }
 }
@@ -140,6 +149,7 @@ operations! {
         bits: 0,
         parameters: 0,
         unitary: false,
+        label: "nop",
     },
     /// Hadamard transform.
     H = 1 {
@@ -147,6 +157,7 @@ operations! {
         bits: 0,
         parameters: 0,
         unitary: true,
+        label: "h",
     },
     /// Compute node, performs an arbitrary classical compute on bits,
     /// as defined by a custom function.
@@ -155,6 +166,7 @@ operations! {
         bits: Arity::variadic(),
         parameters: 0,
         unitary: false,
+        label: "compute",
         payload: {
             inner: Compute<'id, BitSet>,
             write: |dest| inner.write(dest),

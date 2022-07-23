@@ -149,6 +149,7 @@ pub struct Instr<'id> {
 }
 
 impl<'id> Instr<'id> {
+    /// Writes the instruction to the destination.
     #[inline]
     pub(crate) fn write(&self, dest: &mut Vec<u32>) {
         let flags = {
@@ -179,6 +180,7 @@ impl<'id> Instr<'id> {
         self.modifier.as_ref().map(|modifier| modifier.write(dest));
     }
 
+    /// Reads the instruction from the source.
     #[inline]
     pub(crate) fn read(&mut self, src: &mut &'id [u32]) {
         let (op, flags) = OpKind::read(src);
