@@ -71,7 +71,7 @@ macro_rules! operations {
         }
 
         impl<'id> OpKind<'id> {
-            /// Writes the operation kind to the destination.
+            /// Writes the operation kind along with the given flags to the destination.
             #[inline]
             pub(crate) fn write(&self, dest: &mut Vec<u32>, flags: InstrFlags) {
                 match self {
@@ -84,7 +84,7 @@ macro_rules! operations {
                 }
             }
 
-            /// Reads the operation kind from the destination.
+            /// Reads the operation kind along with it's associated flags from the destination.
             #[inline]
             pub(crate) fn read(src: &mut &'id [u32]) -> (Self, InstrFlags) {
                 let (flags, id): (InstrFlags, u16) = storage::read(src);

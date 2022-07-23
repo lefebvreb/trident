@@ -1,5 +1,3 @@
-use std::convert::Infallible;
-
 use bitflags::bitflags;
 
 use crate::bitset::BitSet;
@@ -200,20 +198,24 @@ impl<'id> Instr<'id> {
     }
 }
 
-pub trait InstrSet {
-    type Error;
-
-    fn transpile(src: &mut &[u32], dest: &mut Vec<u32>) -> Result<(), Self::Error>;
+pub struct InstrIter<'id> {
+    instr: Instr<'id>,
+    src: &'id [u32],
 }
 
-pub struct CompleteInstrSet;
-
-impl InstrSet for CompleteInstrSet {
-    type Error = Infallible;
-
+impl<'id> InstrIter<'id> {
+    /// Creates a new instruction iterator from the given source.
     #[inline]
-    fn transpile(src: &mut &[u32], dest: &mut Vec<u32>) -> Result<(), Self::Error> {
-        dest.extend(*src);
-        Ok(())
+    pub(crate) fn new(src: &mut &'id [u32]) -> Self {
+        Self { instr: Instr::default(), src }
+    }
+    
+    #[inline]
+    pub fn next(&mut self) -> Option<&Instr<'id>> {
+        // Implementing `Iterator` is impossible because of the struct's internal buffer `self.instr`.
+        (!self.src.is_empty()).then(|| {
+            self.instr.read(&mut self.src);
+            &self.instr
+        })
     }
 }
