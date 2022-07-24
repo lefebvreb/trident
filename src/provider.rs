@@ -2,7 +2,10 @@ use std::convert::Infallible;
 use std::marker::PhantomData;
 use std::ops::Deref;
 
+use async_trait::async_trait;
+
 use crate::circuit::QuantumCircuit;
+use crate::instruction::Instr;
 
 pub trait InstrSet: Sized {
     type Error;
@@ -47,3 +50,12 @@ impl InstrSet for DefaultSet {
         Ok(circ.clone())
     }
 }
+
+// #[async_trait]
+// pub trait Provider {
+//     type InstrSet: InstrSet;
+
+//     type RuntimeError;
+
+//     fn execute(circ: &Transpiled<Self::InstrSet>) -> Result<(), Self::RuntimeError>;
+// }

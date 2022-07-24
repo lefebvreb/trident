@@ -11,7 +11,7 @@ pub mod instruction;
 pub mod operation;
 pub mod parameter;
 pub mod symbol;
-pub mod transpile;
+pub mod provider;
 
 pub mod prelude {
     //! `use trident::prelude::*;` to import the most common types, traits and functions.

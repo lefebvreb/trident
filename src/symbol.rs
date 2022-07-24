@@ -4,7 +4,7 @@ use std::ops::Range;
 use crate::genericity::Id;
 use crate::circuit::{CircuitBuilder, QuantumCircuitError};
 
-pub trait Symbol<'id>: Copy + Clone + Sized + 'id {
+pub trait Symbol<'id>: Copy + Eq + Ord + Sized + 'id {
     /// The maximum number of symbols of type `Self` that may be allocated in a single quantum circuit.
     const MAX: u32 = u32::MAX - 1;
 
@@ -131,7 +131,7 @@ impl<'id, T: Symbol<'id> + 'id> List<T> {
     }
 
     #[inline]
-    pub fn new(start: Qubit<'id>, end: Qubit<'id>) -> Option<Self> {
+    pub fn new(start: T, end: T) -> Option<Self> {
         (start <= end).then(|| List::from_range(start.id()..end.id() + 1))
     }
 
@@ -156,8 +156,8 @@ impl<'id, T: Symbol<'id> + 'id> List<T> {
     }
 
     #[inline]
-    pub fn contains(&self, parameter: T) -> bool {
-        self.range.contains(&parameter.id())
+    pub fn contains(&self, symbol: T) -> bool {
+        self.range.contains(&symbol.id())
     }
 
     #[inline]

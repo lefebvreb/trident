@@ -4,7 +4,7 @@ use thiserror::Error;
 
 use crate::genericity::Id;
 use crate::symbol::{SymbolTuple, Symbol, List};
-use crate::transpile::{InstrSet, Transpiled};
+use crate::provider::{InstrSet, Transpiled};
 
 #[derive(Clone, Default, Debug)]
 pub struct QuantumCircuit {
