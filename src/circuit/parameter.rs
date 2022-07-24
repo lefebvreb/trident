@@ -1,7 +1,6 @@
 use crate::genericity::Id;
 
 use super::symbol::{FormalParameter, Symbol};
-use super::symbol::private::SymbolPrivate;
 
 #[repr(transparent)]
 #[derive(Clone, Copy, Eq, Debug)]
@@ -39,7 +38,7 @@ impl<'id> Parameter<'id> {
     #[inline]
     pub fn as_formal(self) -> Option<FormalParameter<'id>> {
         const MANTISSA_MASK: u32 = (1 << f32::MANTISSA_DIGITS) - 1;
-        self.is_formal().then(|| FormalParameter::new(self.bits & MANTISSA_MASK))
+        self.is_formal().then(|| FormalParameter::new_unchecked(self.bits & MANTISSA_MASK))
     }
 }
 

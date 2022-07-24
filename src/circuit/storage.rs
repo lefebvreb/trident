@@ -41,7 +41,7 @@ pub(crate) fn read<T>(src: &mut &[Word]) -> T {
             // SAFETY: we checked size.
             unsafe { mem::transmute_copy(&words) }
         }
-        _ => panic!("write only supports types of size 1x or 2x the word size"),
+        _ => panic!("read only supports types of size 1x or 2x the word size"),
     }
 }
 

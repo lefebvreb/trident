@@ -4,6 +4,7 @@ pub mod instruction;
 pub mod operation;
 pub mod parameter;
 pub mod symbol;
+pub mod transpile;
 
 use std::ops::{Deref, DerefMut};
 
@@ -13,13 +14,16 @@ use crate::genericity::Id;
 
 use symbol::{SymbolTuple, Symbol, List};
 
-#[derive(Default)]
+use self::transpile::{InstrSet, Transpiled};
+
+#[derive(Clone, Default, Debug)]
 pub struct QuantumCircuit {
     qubit_count: u32,
     bit_count: u32,
     parameter_count: u32,
 }
 
+#[derive(Debug)]
 pub struct CircuitBuilder<'id> {
     _id: Id<'id>,
     circ: QuantumCircuit,
@@ -78,6 +82,11 @@ impl QuantumCircuit {
     #[inline]
     pub fn bit_count(&self) -> usize {
         self.bit_count as usize
+    }
+
+    #[inline]
+    pub fn transpile<T: InstrSet>(&self) -> Result<Transpiled<T>, T::Error> {
+        T::transpile(self).map(Transpiled::new_unchecked)
     }
 }
 

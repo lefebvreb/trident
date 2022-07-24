@@ -8,14 +8,20 @@
 
 [4] Graph-theoretic Simplification of Quantum Circuits with the ZX-calculus: https://arxiv.org/abs/1902.03178
 
-# OpenQASM 2.0
+# Circuit transpilation/optimization
 
-[5] Open Quantum Assembly Language: https://arxiv.org/abs/1707.03429
+[5] An Introduction to Cartan's KAK Decomposition for QC Programmers: https://arxiv.org/abs/quant-ph/0507171
 
 # IBM
 
-[6] Qiskit Backend Specifications for OpenQASM and OpenPulse Experiments: https://arxiv.org/abs/1809.03452
+[6] Open Quantum Assembly Language: https://arxiv.org/abs/1707.03429
+
+[7] Qiskit Backend Specifications for OpenQASM and OpenPulse Experiments: https://arxiv.org/abs/1809.03452
+
+# IONQ
+
+[8] IONQ REST API: https://docs.ionq.com/
 
 # Other
 
-[7] Compressed Representations of Permutations, and Applications: https://arxiv.org/abs/0902.1038
+[9] Compressed Representations of Permutations, and Applications: https://arxiv.org/abs/0902.1038

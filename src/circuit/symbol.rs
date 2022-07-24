@@ -5,24 +5,11 @@ use crate::genericity::Id;
 
 use super::{CircuitBuilder, QuantumCircuitError};
 
-pub(crate) mod private {
-    //! Private module for the symbol private trait.
-
-    /// Base trait implemented by the symbol types: Qubit, FormalParameter and Bit.
-    /// Kept private and hidden away because misusing the new method would be unsound.
-    #[doc(hidden)]
-    pub trait SymbolPrivate<'id> {
-        /// Returns a new symbol with the value of `n`. This method is not unsafe but may cause
-        /// logical bugs is wrongly used. This is why it is private.
-        fn new(n: u32) -> Self;
-    }
-}
-
-use private::SymbolPrivate;
-
-pub trait Symbol<'id>: Clone + Copy + PartialEq + Eq + PartialOrd + Ord + Sized + SymbolPrivate<'id> + 'id {
+pub trait Symbol<'id>: Clone + Copy + PartialEq + Eq + PartialOrd + Ord + Sized + 'id {
     /// The maximum number of symbols of type `Self` that may be allocated in a single quantum circuit.
     const MAX: u32 = u32::MAX - 1;
+
+    fn new_unchecked(n: u32) -> Self;
     
     fn id(self) -> u32;
 
@@ -42,7 +29,7 @@ pub trait Symbol<'id>: Clone + Copy + PartialEq + Eq + PartialOrd + Ord + Sized 
     #[inline]
     fn alloc(circ: &mut CircuitBuilder<'id>) -> Result<Self, QuantumCircuitError> {
         let count = Self::count(circ);
-        let res = Self::new(*count);
+        let res = Self::new_unchecked(*count);
         Self::checked_incr(count, 1).map(|_| res)
     }
 
@@ -52,7 +39,7 @@ pub trait Symbol<'id>: Clone + Copy + PartialEq + Eq + PartialOrd + Ord + Sized 
         let mut start = *count;
         Self::checked_incr(count, N).map(|_|
             [0; N].map(|_| {
-                let res = Self::new(start);
+                let res = Self::new_unchecked(start);
                 start += 1;
                 res
             })
@@ -86,23 +73,14 @@ macro_rules! symbols {
                 n: u32,
                 id: Id<'id>,
             }
-
-            impl<'id> $name<'id> {
-                #[inline]
-                pub fn new_unchecked(n: u32) -> Self {
-                    Self::new(n)
-                }
-            }
-    
-            impl<'id> SymbolPrivate<'id> for $name<'id> {
-                #[inline]
-                fn new(n: u32) -> Self {
-                    Self { n, id: Id::default() }
-                }
-            }
     
             impl<'id> Symbol<'id> for $name<'id> {
                 $(const MAX: u32 = $max;)?
+
+                #[inline]
+                fn new_unchecked(n: u32) -> Self {
+                    Self { n, id: Id::default() }
+                }
 
                 #[inline]
                 fn id(self) -> u32 {
@@ -175,7 +153,7 @@ impl<'id, T: Symbol<'id> + 'id> List<T> {
 
     #[inline]
     pub fn get(&self, n: usize) -> Option<T> {
-        (n < self.len()).then(|| T::new(n as u32 + self.range.start))
+        (n < self.len()).then(|| T::new_unchecked(n as u32 + self.range.start))
     }
 
     #[inline]
@@ -206,7 +184,7 @@ impl<'id, T: Symbol<'id> + 'id> Iterator for SymbolIter<T> {
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        self.inner.range.next().map(T::new)
+        self.inner.range.next().map(T::new_unchecked)
     }
 }
 

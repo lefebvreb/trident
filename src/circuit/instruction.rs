@@ -48,7 +48,7 @@ impl<'id, T> Compute<'id, T> {
 macro_rules! modifiers {
     {
         $(
-            $(#[doc$($args: tt)*])* 
+            $(#[doc$($args: tt)*])*
             $name: ident = $int: literal $({
                 $inner: ident: $payload: ty,
                 write: $write: expr,
