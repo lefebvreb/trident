@@ -22,6 +22,8 @@
 
 [8] IONQ REST API: https://docs.ionq.com/
 
+[9] Getting Started With Native Gates: https://ionq.com/docs/getting-started-with-native-gates
+
 # Other
 
-[9] Compressed Representations of Permutations, and Applications: https://arxiv.org/abs/0902.1038
+[10] Compressed Representations of Permutations, and Applications: https://arxiv.org/abs/0902.1038

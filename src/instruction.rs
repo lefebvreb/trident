@@ -1,6 +1,7 @@
 use bitflags::bitflags;
 
 use crate::bitset::BitSet;
+use crate::genericity::Id;
 
 use super::operation::OpKind;
 use super::storage;
@@ -196,8 +197,14 @@ impl<'id> Instr<'id> {
 
         self.modifier = flags.contains(InstrFlags::HAS_MODIFIER).then(|| Modifier::read(src));
     }
+
+    #[inline]
+    pub fn is_concrete(&self) -> bool {
+        self.parameters.iter().cloned().all(Parameter::is_value)
+    }
 }
 
+#[derive(Clone, Debug)]
 pub struct InstrIter<'id> {
     instr: Instr<'id>,
     src: &'id [u32],
@@ -206,7 +213,7 @@ pub struct InstrIter<'id> {
 impl<'id> InstrIter<'id> {
     /// Creates a new instruction iterator from the given source.
     #[inline]
-    pub(crate) fn new(src: &mut &'id [u32]) -> Self {
+    pub(crate) fn new(src: &'id [u32]) -> Self {
         Self { instr: Instr::default(), src }
     }
     
@@ -217,5 +224,43 @@ impl<'id> InstrIter<'id> {
             self.instr.read(&mut self.src);
             &self.instr
         })
+    }
+}
+
+#[derive(Clone, Default, Debug)]
+pub struct InstrVec<'id> {
+    _id: Id<'id>,
+    data: Vec<u32>,
+}
+
+impl<'id> InstrVec<'id> {
+    #[inline]
+    pub(crate) fn new(data: Vec<u32>) -> Self {
+        Self { _id: Id::default(), data }
+    }
+
+    #[inline]
+    pub(crate) fn take(self) -> Vec<u32> {
+        self.data
+    }
+
+    #[inline]
+    pub fn append(&mut self, instruction: &Instr<'id>) {
+        instruction.write(&mut self.data);
+    }
+
+    #[inline]
+    pub fn extend(&mut self, instructions: &InstrVec<'id>) {
+        self.data.extend(&instructions.data);
+    }
+
+    #[inline]
+    pub fn clear(&mut self) {
+        self.data.clear()
+    }
+
+    #[inline]
+    pub fn iter(&'id self) -> InstrIter<'id> {
+        InstrIter::new(&self.data)
     }
 }
