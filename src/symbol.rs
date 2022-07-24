@@ -5,7 +5,7 @@ use crate::genericity::Id;
 use crate::circuit::{CircuitBuilder, CircuitError};
 use crate::prelude::QuantumCircuit;
 
-pub trait Symbol<'id>: Copy + Eq + Ord + Sized + 'id {
+pub trait Symbol<'id> {
     /// The maximum number of symbols of type `Self` that may be allocated in a single quantum circuit.
     const MAX: u32 = u32::MAX - 1;
 
@@ -13,44 +13,27 @@ pub trait Symbol<'id>: Copy + Eq + Ord + Sized + 'id {
     
     fn id(self) -> u32;
 
-    fn num<'circ>(circ: &'circ mut CircuitBuilder<'id>) -> &'circ mut u32;
-
-    #[inline]
-    #[doc(hidden)]
-    fn checked_incr(a: &mut u32, n: usize) -> Result<(), CircuitError> {
-        (n < (Self::MAX - *a) as usize)
-            .then(|| *a += n as u32)
-            .ok_or(CircuitError::AllocOverflow)
-    }
-
-    #[inline]
-    fn alloc(circ: &mut CircuitBuilder<'id>) -> Result<Self, CircuitError> {
-        let count = Self::num(circ);
-        let res = Self::new_unchecked(*count);
-        Self::checked_incr(count, 1).map(|_| res)
-    }
-
-    #[inline]
-    fn alloc_n<const N: usize>(circ: &mut CircuitBuilder<'id>) -> Result<[Self; N], CircuitError> {
-        let count = Self::num(circ);
-        let mut start = *count;
-        Self::checked_incr(count, N).map(|_|
-            [0; N].map(|_| {
-                let res = Self::new_unchecked(start);
-                start += 1;
-                res
-            })
-        )
-    }
+    fn reserve(builder: &mut CircuitBuilder<'id>, n: usize) -> Result<u32, CircuitError>;
 }
 
 /// Used to define the different symbols types.
+/// $num is the name of the CircuitBuider method that returns the current number of symbols
+/// $counter is the name of the CircuitBuider method that returns a mutable ref to
+/// the counter of that symbol element.
+/// 
+/// There are not the same, because ancillas and qubits share the same counter, but we don't want to mix
+/// them up.
+/// 
+/// $num is used to assess if we can reserve n more symbols. $counter is actually incremented.
+/// 
+/// In the case of qubits, $num == width (ancillas + qubits) and $counter == num_qubits (only qubits).
 macro_rules! symbols {
     {
         $(
             $(#[doc$($args: tt)*])* 
             $name: ident {
                 num: $num: ident,
+                counter: $num_mut: ident,
                 $(max: $max: expr,)?
             }
         )*
@@ -60,8 +43,8 @@ macro_rules! symbols {
             #[repr(transparent)]
             #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
             pub struct $name<'id> {
+                _id: Id<'id>,
                 n: u32,
-                id: Id<'id>,
             }
     
             impl<'id> Symbol<'id> for $name<'id> {
@@ -69,17 +52,22 @@ macro_rules! symbols {
 
                 #[inline]
                 fn new_unchecked(n: u32) -> Self {
-                    Self { n, id: Id::default() }
+                    Self { n, _id: Id::default() }
                 }
 
                 #[inline]
                 fn id(self) -> u32 {
                     self.n
                 }
-                
+
                 #[inline]
-                fn num<'b>(circ: &'b mut CircuitBuilder) -> &'b mut u32 {
-                    circ.$num()
+                fn reserve(builder: &mut CircuitBuilder<'id>, n: usize) -> Result<u32, CircuitError> {
+                    (n < Self::MAX as usize - builder.$num()).then(|| {
+                        let val = *builder.$num_mut();
+                        *builder.$num_mut() += n as u32;
+                        val
+                    })
+                    .ok_or(CircuitError::AllocOverflow)
                 }
             }
         )*
@@ -89,23 +77,26 @@ macro_rules! symbols {
 symbols! {
     /// TODO: Doc
     Qubit {
-        num: num_qubits_mut,
+        num: width,
+        counter: num_qubits_mut,
     }
 
     /// TODO: Doc
     FormalParameter {
-        num: num_params_mut,
+        num: num_parameters,
+        counter: num_params_mut,
     }
 
     /// TODO: Doc
     Bit {
-        num: num_bits_mut,
+        num: num_bits,
+        counter: num_bits_mut,
         max: 1 << f32::MANTISSA_DIGITS,
     }
 }
 
 pub trait SymbolTuple<'id>: Sized {
-    fn alloc(b: &mut CircuitBuilder<'id>) -> Result<Self, CircuitError>;
+    fn alloc(builder: &mut CircuitBuilder<'id>) -> Result<Self, CircuitError>;
 }
 
 macro_rules! peel {
@@ -117,13 +108,13 @@ macro_rules! tuple {
     { $($name: ident,)+ } => {
         impl<'id, $($name,)+> SymbolTuple<'id> for ($($name,)+) where $($name: Symbol<'id>,)* {
             #[inline]
-            fn alloc(b: &mut CircuitBuilder<'id>) -> Result<Self, CircuitError> {
-                Ok(($(b.alloc::<$name>()?,)+))
+            fn alloc(builder: &mut CircuitBuilder<'id>) -> Result<Self, CircuitError> {
+                Ok(($(builder.alloc::<$name>()?,)+))
             }
         }
 
         peel! { $($name,)+ }
-    }
+    };
 }
 
 tuple! { A, B, C, D, E, F, G, H, I, J, K, L, }

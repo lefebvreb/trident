@@ -74,7 +74,7 @@ impl QuantumCircuit {
     #[inline]
     pub fn bind(self, parameters: &[f32]) -> Option<ConcreteCircuit> {
         (parameters.len() == self.num_parameters()).then(|| {
-            todo!()
+            todo!() // TODO: implement this somehow.
         })
     }
 
@@ -153,43 +153,51 @@ impl<'id> CircuitBuilder<'id> {
     }
 
     #[inline]
-    pub fn qubit_count(&self) -> usize {
+    pub fn num_qubits(&self) -> usize {
         self.num_qubits as usize
     }
 
     #[inline]
-    pub fn parameter_count(&self) -> usize {
+    pub fn num_ancillas(&self) -> usize {
+        self.num_ancillas as usize
+    }
+
+    #[inline]
+    pub fn num_parameters(&self) -> usize {
         self.num_params as usize
     }
 
     #[inline]
-    pub fn bit_count(&self) -> usize {
+    pub fn num_bits(&self) -> usize {
         self.num_bits as usize
     }
 
     #[inline]
-    pub fn ancilla_count(&self) -> usize {
-        self.num_ancillas as usize
+    pub fn width(&self) -> usize {
+        self.num_qubits() + self.num_ancillas()
     }
 
-    // #[inline]
-    // pub fn set_ancilla_count(&mut self, value: usize) -> Result<(), CircuitError> {
-    //     self.num_ancillas = value;
-    // }
-
     #[inline]
-    pub fn width(&self) -> usize {
-        self.qubit_count() + self.ancilla_count()
+    pub fn set_num_ancillas(&mut self, n: usize) -> Result<(), CircuitError> {
+        (n < Qubit::MAX as usize - self.width())
+            .then(|| self.num_ancillas += n as u32)
+            .ok_or(CircuitError::AllocOverflow)
     }
 
     #[inline]
     pub fn alloc<T: Symbol<'id>>(&mut self) -> Result<T, CircuitError> {
-        T::alloc(self)
+        T::reserve(self, 1).map(T::new_unchecked)
     }
 
     #[inline]
     pub fn alloc_n<T: Symbol<'id>, const N: usize>(&mut self) -> Result<[T; N], CircuitError> {
-        T::alloc_n(self)
+        T::reserve(self, N).map(|mut n| {
+            [(); N].map(|_| {
+                let sym = T::new_unchecked(n);
+                n += 1;
+                sym
+            })
+        })
     }
 
     #[inline]
