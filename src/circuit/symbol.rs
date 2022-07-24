@@ -5,7 +5,7 @@ use crate::genericity::Id;
 
 use super::{CircuitBuilder, QuantumCircuitError};
 
-pub trait Symbol<'id>: Clone + Copy + PartialEq + Eq + PartialOrd + Ord + Sized + 'id {
+pub trait Symbol<'id>: Copy + Clone + Sized + 'id {
     /// The maximum number of symbols of type `Self` that may be allocated in a single quantum circuit.
     const MAX: u32 = u32::MAX - 1;
 

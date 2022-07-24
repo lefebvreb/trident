@@ -8,8 +8,8 @@ pub struct Arity(u32);
 
 impl Arity {
     #[inline]
-    pub fn new(n: u32) -> Self {
-        Self(n)
+    pub fn new(n: u32) -> Option<Self> {
+        (n != u32::MAX).then(|| Self(n))
     }
 
     #[inline]
@@ -18,13 +18,13 @@ impl Arity {
     }
 
     #[inline]
-    pub fn is_definite(self) -> bool {
-        self.0 != u32::MAX
+    pub fn is_variadic(self) -> bool {
+        self.0 == u32::MAX
     }
 
     #[inline]
-    pub fn is_variadic(self) -> bool {
-        self.0 == u32::MAX
+    pub fn is_definite(self) -> bool {
+        !self.is_variadic()
     }
 
     #[inline]
