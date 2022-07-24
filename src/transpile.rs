@@ -2,7 +2,7 @@ use std::convert::Infallible;
 use std::marker::PhantomData;
 use std::ops::Deref;
 
-use super::QuantumCircuit;
+use crate::circuit::QuantumCircuit;
 
 pub trait InstrSet: Sized {
     type Error;

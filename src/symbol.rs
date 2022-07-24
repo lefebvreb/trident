@@ -2,8 +2,7 @@ use std::marker::PhantomData;
 use std::ops::Range;
 
 use crate::genericity::Id;
-
-use super::{CircuitBuilder, QuantumCircuitError};
+use crate::circuit::{CircuitBuilder, QuantumCircuitError};
 
 pub trait Symbol<'id>: Copy + Clone + Sized + 'id {
     /// The maximum number of symbols of type `Self` that may be allocated in a single quantum circuit.

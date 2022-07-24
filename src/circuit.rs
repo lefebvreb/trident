@@ -1,20 +1,10 @@
-mod storage;
-
-pub mod instruction;
-pub mod operation;
-pub mod parameter;
-pub mod symbol;
-pub mod transpile;
-
 use std::ops::{Deref, DerefMut};
 
 use thiserror::Error;
 
 use crate::genericity::Id;
-
-use symbol::{SymbolTuple, Symbol, List};
-
-use self::transpile::{InstrSet, Transpiled};
+use crate::symbol::{SymbolTuple, Symbol, List};
+use crate::transpile::{InstrSet, Transpiled};
 
 #[derive(Clone, Default, Debug)]
 pub struct QuantumCircuit {
@@ -53,20 +43,20 @@ pub enum QuantumCircuitError {
 
 impl QuantumCircuit {
     #[inline]
+    pub fn new<F>(init: F) -> Result<Self, QuantumCircuitError>
+    where
+        F: for<'any> FnOnce(&mut CircuitBuilder<'any>) -> Result<(), QuantumCircuitError>
+    {
+        Self::default().edit(init)
+    }
+
+    #[inline]
     pub fn edit<F>(self, edit: F) -> Result<Self, QuantumCircuitError>
     where
         F: for<'any> FnOnce(&mut CircuitBuilder<'any>) -> Result<(), QuantumCircuitError>
     {
         let mut builder = CircuitBuilder { _id: Id::default(), circ: self };
         edit(&mut builder).map(|_| builder.circ)
-    }
-
-    #[inline]
-    pub fn new<F>(init: F) -> Result<Self, QuantumCircuitError>
-    where
-        F: for<'any> FnOnce(&mut CircuitBuilder<'any>) -> Result<(), QuantumCircuitError>
-    {
-        Self::default().edit(init)
     }
 
     #[inline]
