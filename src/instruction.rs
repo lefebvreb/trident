@@ -184,6 +184,8 @@ impl<'id> Instr<'id> {
     pub(crate) fn read(&mut self, src: &mut &'id [u32]) {
         let (op, flags) = OpKind::read(src);
 
+        self.op = op;
+
         macro_rules! read_slices {
             ( $($name: ident),* ) => {
                 $(
@@ -196,6 +198,11 @@ impl<'id> Instr<'id> {
         read_slices!(qubits, bits, parameters);
 
         self.modifier = flags.contains(InstrFlags::HAS_MODIFIER).then(|| Modifier::read(src));
+    }
+
+    #[inline]
+    pub fn has_modifier(&self) -> bool {
+        self.modifier.is_some()
     }
 
     #[inline]

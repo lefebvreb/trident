@@ -6,14 +6,19 @@ use std::mem;
 /// The type used for storage.
 type Word = u32;
 
-/// Size of a Word in bytes.
-const WORD_SIZE: usize = mem::size_of::<Word>();
+/// Checks that T and Word have the same size and align
+#[inline(always)]
+fn assert_transparent<T>() {
+    assert_eq!(mem::size_of::<T>(), mem::size_of::<Word>(), "T and Word must be the same size");
+    assert_eq!(mem::align_of::<T>(), mem::align_of::<Word>(), "T and Word must be the same align");
+}
 
-/// Alignement of a Word in bytes.
-const WORD_ALIGN: usize = mem::align_of::<Word>();
-
-/// Twice the size of a Word in bytes.
-const TWO_WORD_SIZE: usize = 2 * WORD_SIZE;
+#[inline(always)]
+fn size_multiple<T>() -> usize {
+    assert_ne!(mem::size_of::<Word>(), 0, "Word can't be a ZST");
+    assert_eq!(mem::size_of::<T>() % mem::size_of::<Word>(), 0, "T's size must be a multiple of Word's");
+    mem::size_of::<T>() / mem::size_of::<Word>()
+}
 
 /// Reads a single Word from the source.
 /// Panics if the source is empty.
@@ -30,13 +35,13 @@ fn read_word(src: &mut &[Word]) -> Word {
 /// the source is empty.
 #[inline(always)]
 pub(crate) fn read<T>(src: &mut &[Word]) -> T {
-    match mem::size_of::<T>() {
-        WORD_SIZE => {
+    match size_multiple::<T>() {
+        1 => {
             let word = read_word(src);
             // SAFETY: we checked size.
             unsafe { mem::transmute_copy(&word) }
         }
-        TWO_WORD_SIZE => {
+        2 => {
             let words = [(); 2].map(|_| read_word(src));
             // SAFETY: we checked size.
             unsafe { mem::transmute_copy(&words) }
@@ -53,9 +58,7 @@ pub(crate) fn read<T>(src: &mut &[Word]) -> T {
 /// Word.
 #[inline(always)]
 pub(crate) fn read_slice<'src, T>(src: &mut &'src [Word], len: u32) -> &'src [T] {
-    if mem::size_of::<T>() != WORD_SIZE || mem::align_of::<T>() != WORD_ALIGN {
-        panic!("read_slice only supports type of word size and align");
-    }
+    assert_transparent::<T>();
 
     let (left, right) = src.split_at(len as usize);
     *src = right;
@@ -68,13 +71,13 @@ pub(crate) fn read_slice<'src, T>(src: &mut &'src [Word], len: u32) -> &'src [T]
 /// Panics if the size of T is not equal nor twice the size of Word.
 #[inline(always)]
 pub(crate) fn write<T>(dest: &mut Vec<Word>, data: T) {
-    match mem::size_of::<T>() {
-        WORD_SIZE => {
+    match size_multiple::<T>() {
+        1 => {
             // SAFETY: we checked size.
             let word = unsafe { mem::transmute_copy(&data) };
             dest.push(word);
         }
-        TWO_WORD_SIZE => {
+        2 => {
             // SAFETY: we checked size.
             let words: [Word; 2] = unsafe { mem::transmute_copy(&data) };
             dest.extend(&words);
@@ -90,9 +93,7 @@ pub(crate) fn write<T>(dest: &mut Vec<Word>, data: T) {
 /// Word.
 #[inline(always)]
 pub(crate) fn write_slice<T>(dest: &mut Vec<Word>, slice: &[T]) {
-    if mem::size_of::<T>() != WORD_SIZE || mem::align_of::<T>() != WORD_ALIGN {
-        panic!("write_slice only supports type of word size and align");
-    }
+    assert_transparent::<T>();
 
     // SAFETY: T and Word have the same size and align.
     let slice: &[Word] = unsafe { mem::transmute(slice) };

@@ -1,26 +1,37 @@
-use std::convert::Infallible;
-use std::marker::PhantomData;
-use std::ops::Deref;
-
 use async_trait::async_trait;
 
-use crate::circuit::{ConcreteCircuit, QuantumCircuit, TranspiledCircuit};
+use crate::circuit::TranspiledCircuit;
 use crate::instruction::{Instr, InstrVec};
-use crate::symbol::{Qubit, Ancillas};
+use crate::linalg::UnitaryMatrix;
+use crate::symbol::Ancillas;
 
 pub struct Histogram {
     // TODO
 }
 
-#[async_trait]
-pub trait Provider: Sized {
-    type TranspileConfig;
-
+pub trait Architecture {
     type TranspileError;
+
+    fn num_qubits(&self) -> usize;
+
+    fn decompose_su2(&self, unitary: UnitaryMatrix<2>) -> usize;
+
+    fn non_local(&self) -> ();
+
+    fn connected(&self, qubit1: usize, qubit2: usize);
+
+    fn supports<'id>(&self, instr: &Instr<'id>) -> Result<(), Self::TranspileError>;
+
+    fn transpile<'id>(&self, instructions: InstrVec<'id>, ancillas: Option<Ancillas<'id>>) -> Result<InstrVec<'id>, Self::TranspileError>;
+}
+
+#[async_trait]
+pub trait Backend {
+    type Architecture: Architecture;
 
     type RuntimeError;
 
-    fn transpile<'id>(instructions: InstrVec<'id>, ancillas: Option<Ancillas<'id>>, config: &Self::TranspileConfig) -> Result<InstrVec<'id>, Self::TranspileError>;
+    fn execute(&self, circ: &TranspiledCircuit<Self::Architecture>) -> Result<Histogram, Self::RuntimeError>;
 
-    fn execute(circ: &TranspiledCircuit<Self>) -> Result<Histogram, Self::RuntimeError>;
+    async fn execute_optimize(&self, circ: &TranspiledCircuit<Self::Architecture>) -> Result<Histogram, Self::RuntimeError>;
 }

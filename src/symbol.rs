@@ -1,4 +1,3 @@
-use std::marker::PhantomData;
 use std::ops::Range;
 
 use crate::genericity::Id;
@@ -17,23 +16,20 @@ pub trait Symbol<'id> {
 }
 
 /// Used to define the different symbols types.
-/// $num is the name of the CircuitBuider method that returns the current number of symbols
-/// $counter is the name of the CircuitBuider method that returns a mutable ref to
-/// the counter of that symbol element.
 /// 
-/// There are not the same, because ancillas and qubits share the same counter, but we don't want to mix
-/// them up.
+/// # Implementaion details
 /// 
-/// $num is used to assess if we can reserve n more symbols. $counter is actually incremented.
-/// 
-/// In the case of qubits, $num == width (ancillas + qubits) and $counter == num_qubits (only qubits).
+/// + $num is the name of the `CircuitBuilder`'s method that returns the current count of allocated symbols:
+/// for parameters and bits that's their direct count. For qubits that's the `width`: ancillas and primary qubits.
+/// + $counter is the name of the `CircuitBuilder`'s method used to get a mutable reference to the number of allocated
+/// symbols. For qubits, this does not include ancillas.
 macro_rules! symbols {
     {
         $(
             $(#[doc$($args: tt)*])* 
             $name: ident {
                 num: $num: ident,
-                counter: $num_mut: ident,
+                counter: $counter: ident,
                 $(max: $max: expr,)?
             }
         )*
@@ -63,8 +59,8 @@ macro_rules! symbols {
                 #[inline]
                 fn reserve(builder: &mut CircuitBuilder<'id>, n: usize) -> Result<u32, CircuitError> {
                     (n < Self::MAX as usize - builder.$num()).then(|| {
-                        let val = *builder.$num_mut();
-                        *builder.$num_mut() += n as u32;
+                        let val = *builder.$counter();
+                        *builder.$counter() += n as u32;
                         val
                     })
                     .ok_or(CircuitError::AllocOverflow)

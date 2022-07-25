@@ -8,6 +8,7 @@ mod storage;
 pub mod bitset;
 pub mod circuit;
 pub mod instruction;
+pub mod linalg;
 pub mod operation;
 pub mod parameter;
 pub mod symbol;

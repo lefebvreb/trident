@@ -3,9 +3,8 @@ use std::ops::{Deref, DerefMut};
 
 use thiserror::Error;
 
-use crate::genericity::Id;
-use crate::instruction::{Instr, InstrIter, InstrVec};
-use crate::provider::Provider;
+use crate::instruction::InstrVec;
+use crate::provider::Architecture;
 use crate::symbol::{SymbolTuple, Symbol, Qubit, Ancillas};
 
 #[derive(Clone, PartialEq, Eq, Debug, Error)]
@@ -231,16 +230,16 @@ impl ConcreteCircuit {
     }
 
     #[inline]
-    pub fn transpile<T: Provider>(self, config: &T::TranspileConfig) -> Result<TranspiledCircuit<T>, T::TranspileError> {
+    pub fn transpile<'arch, T: Architecture>(self, backend: &T) -> Result<TranspiledCircuit<T>, T::TranspileError> {
         let mut circ = self.take();
         let ancillas = Ancillas::new(&circ);
-        circ.data = T::transpile(InstrVec::new(circ.data), ancillas, config)?.take();
+        circ.data = backend.transpile(InstrVec::new(circ.data), ancillas)?.take();
         Ok(TranspiledCircuit::new(circ))
     }
 
     #[inline]
-    pub fn transpile_copy<T: Provider>(&self, config: &T::TranspileConfig) -> Result<TranspiledCircuit<T>, T::TranspileError> {
-        self.clone().transpile(config)
+    pub fn transpile_copy<T: Architecture>(&self, backend: &T) -> Result<TranspiledCircuit<T>, T::TranspileError> {
+        self.clone().transpile(backend)
     }
 
     #[inline]
@@ -258,13 +257,13 @@ impl Deref for ConcreteCircuit {
     }
 }
 
-#[derive(Clone, Default, Debug)]
-pub struct TranspiledCircuit<T: Provider> {
+#[derive(Clone, Debug)]
+pub struct TranspiledCircuit<T: Architecture> {
     _phantom: PhantomData<T>,
     circ: QuantumCircuit,
 }
 
-impl<T: Provider> Deref for TranspiledCircuit<T> {
+impl<T: Architecture> Deref for TranspiledCircuit<T> {
     type Target = QuantumCircuit;
 
     #[inline]
@@ -273,7 +272,7 @@ impl<T: Provider> Deref for TranspiledCircuit<T> {
     }
 }
 
-impl<T: Provider> TranspiledCircuit<T> {
+impl<'arch, T: Architecture> TranspiledCircuit<T> {
     /// Wraps the circuit in a transpiled circuit type, to signify it has
     /// been transpiled for the provider T. Sould obviously only be used after
     /// transpiling the input circuit.
