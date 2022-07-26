@@ -299,7 +299,6 @@ complex_op! {
 impl Neg for c64 {
     type Output = c64;
 
-    /// Negates the complex number.
     fn neg(self) -> c64 {
         c64::new(-self.re, -self.im)
     }
@@ -308,25 +307,20 @@ impl Neg for c64 {
 impl Neg for &c64 {
     type Output = c64;
 
-    /// Negates the complex number.
     fn neg(self) -> c64 {
         c64::new(-self.re, -self.im)
     }
 }
 
 impl Sum for c64 {
-    /// Sums an iterator of complex numbers.
-    #[inline]
     fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
-        iter.fold(Self::ZERO, |acc, x| acc + x)
+        iter.fold(Self::ZERO, c64::add)
     }
 }
 
 impl Product for c64 {
-    /// Returns the product of an iterator of complex numbers.
-    #[inline]
     fn product<I: Iterator<Item = Self>>(iter: I) -> Self {
-        iter.fold(Self::ONE, |acc, x| acc * x)
+        iter.fold(Self::ONE, c64::mul)
     }
 }
 
@@ -335,3 +329,26 @@ impl PartialEq for c64 {
         (self - rhs).abs_sqr() <= Self::PRECISION * Self::PRECISION
     }
 }
+
+// Implements conversions from other types.
+macro_rules! complex_from {
+    { $($from: ty),* } => {
+        $(
+            /// This conversion is lossless.
+            impl From<$from> for c64 {
+                fn from(x: $from) -> Self {
+                    Self::new(x.into(), 0.0)
+                }
+            }
+    
+            /// This conversion is lossless.
+            impl From<($from, $from)> for c64 {
+                fn from(xy: ($from, $from)) -> Self {
+                    Self::new(xy.0.into(), xy.1.into())
+                }
+            }
+        )*
+    }
+}
+
+complex_from!{ f32, f64 }

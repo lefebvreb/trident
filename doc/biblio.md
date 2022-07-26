@@ -12,18 +12,20 @@
 
 [5] An Introduction to Cartan's KAK Decomposition for QC Programmers: https://arxiv.org/abs/quant-ph/0507171
 
+[6] An efficient quantum circuits optimizing scheme compared with QISKit: https://arxiv.org/abs/1807.01703
+
 # IBM
 
-[6] Open Quantum Assembly Language: https://arxiv.org/abs/1707.03429
+[7] Open Quantum Assembly Language: https://arxiv.org/abs/1707.03429
 
-[7] Qiskit Backend Specifications for OpenQASM and OpenPulse Experiments: https://arxiv.org/abs/1809.03452
+[8] Qiskit Backend Specifications for OpenQASM and OpenPulse Experiments: https://arxiv.org/abs/1809.03452
 
 # IONQ
 
-[8] IONQ REST API: https://docs.ionq.com/
+[9] IONQ REST API: https://docs.ionq.com/
 
-[9] Getting Started With Native Gates: https://ionq.com/docs/getting-started-with-native-gates
+[10] Getting Started With Native Gates: https://ionq.com/docs/getting-started-with-native-gates
 
 # Other
 
-[10] Compressed Representations of Permutations, and Applications: https://arxiv.org/abs/0902.1038
+[11] Compressed Representations of Permutations, and Applications: https://arxiv.org/abs/0902.1038

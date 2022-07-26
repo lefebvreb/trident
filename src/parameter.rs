@@ -1,9 +1,12 @@
+use thiserror::Error;
+
 use crate::genericity::Id;
+use crate::linalg::c64;
 
 use super::symbol::{FormalParameter, Symbol};
 
 #[repr(transparent)]
-#[derive(Clone, Copy, Eq, Debug)]
+#[derive(Copy, Clone, Eq, Debug)]
 pub struct Parameter<'id> {
     _id: Id<'id>,
     bits: u32,
@@ -28,12 +31,11 @@ impl<'id> Parameter<'id> {
     }
 
     pub fn as_value(self) -> Option<f32> {
-        self.is_value().then(|| f32::from_bits(self.bits))
+        self.try_into().ok()
     }
 
     pub fn as_formal(self) -> Option<FormalParameter<'id>> {
-        const MANTISSA_MASK: u32 = (1 << f32::MANTISSA_DIGITS) - 1;
-        self.is_formal().then(|| FormalParameter::new_unchecked(self.bits & MANTISSA_MASK))
+        self.try_into().ok()
     }
 }
 
@@ -60,5 +62,38 @@ impl PartialEq for Parameter<'_> {
             (None, None) => self.bits == rhs.bits,
             _ => false,
         }
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Error)]
+#[error("parameter is not a value")]
+pub struct NotValue;
+
+impl TryFrom<Parameter<'_>> for f32 {
+    type Error = NotValue;
+
+    fn try_from(param: Parameter) -> Result<Self, Self::Error> {
+        param.is_value().then(|| f32::from_bits(param.bits)).ok_or(NotValue)
+    }
+}
+
+impl TryFrom<Parameter<'_>> for c64 {
+    type Error = NotValue;
+
+    fn try_from(param: Parameter) -> Result<Self, Self::Error> {
+        f32::try_from(param).map(c64::from)
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Error)]
+#[error("parameter is not formal")]
+pub struct NotFormal;
+
+impl<'id> TryFrom<Parameter<'id>> for FormalParameter<'id> {
+    type Error = NotFormal;
+
+    fn try_from(param: Parameter) -> Result<Self, Self::Error> {
+        const MANTISSA_MASK: u32 = (1 << f32::MANTISSA_DIGITS) - 1;
+        param.is_formal().then(|| Self::new_unchecked(param.bits & MANTISSA_MASK)).ok_or(NotFormal)
     }
 }

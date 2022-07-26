@@ -14,11 +14,11 @@ pub trait Architecture {
 
     fn num_qubits(&self) -> usize;
 
-    fn decompose_su2(&self, unitary: UnitaryMatrix<2>) -> usize;
+    fn connected(&self, qubit1: usize, qubit2: usize) -> bool;
 
-    fn non_local(&self) -> ();
+    fn decompose_su2(&self, unitary: UnitaryMatrix<2>) -> (); // TODO
 
-    fn connected(&self, qubit1: usize, qubit2: usize);
+    fn non_local(&self) -> (); // TODO
 
     fn supports<'id>(&self, instr: &Instr<'id>) -> Result<(), Self::TranspileError>;
 
@@ -33,5 +33,5 @@ pub trait Backend {
 
     fn execute(&self, circ: &TranspiledCircuit<Self::Architecture>) -> Result<Histogram, Self::RuntimeError>;
 
-    async fn execute_optimize(&self, circ: &TranspiledCircuit<Self::Architecture>) -> Result<Histogram, Self::RuntimeError>;
+    async fn execute_async(&self, circ: &TranspiledCircuit<Self::Architecture>) -> Result<Histogram, Self::RuntimeError>;
 }

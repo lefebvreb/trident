@@ -149,7 +149,7 @@ impl<'id> Instr<'id> {
         let flags = {
             let mut res = InstrFlags::empty();
 
-            if self.modifier.is_some() {
+            if self.has_modifier() {
                 res |= InstrFlags::HAS_MODIFIER;
             }
 

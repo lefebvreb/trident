@@ -7,7 +7,7 @@ use crate::instruction::InstrVec;
 use crate::provider::Architecture;
 use crate::symbol::{SymbolTuple, Symbol, Qubit, Ancillas};
 
-#[derive(Clone, PartialEq, Eq, Debug, Error)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Error)]
 pub enum CircuitError {
     #[error("quantum allocator overflow")]
     AllocOverflow,
@@ -58,10 +58,6 @@ impl QuantumCircuit {
         self.num_qubit() + self.num_ancillas()
     }
 
-    pub fn is_concrete(&self) -> bool {
-        self.num_parameters() == 0
-    }
-
     pub fn bind(self, parameters: &[f32]) -> Option<ConcreteCircuit> {
         (parameters.len() == self.num_parameters()).then(|| {
             todo!() // TODO: implement this somehow.
@@ -70,6 +66,14 @@ impl QuantumCircuit {
 
     pub fn bind_copy(&self, parameters: &[f32]) -> Option<ConcreteCircuit> {
         self.clone().bind(parameters)
+    }
+
+    pub fn is_concrete(&self) -> bool {
+        self.num_parameters() == 0
+    }
+
+    pub fn as_concrete(self) -> Option<ConcreteCircuit> {
+        self.try_into().ok()
     }
 }
 
@@ -224,21 +228,25 @@ impl Deref for ConcreteCircuit {
     }
 }
 
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Error)]
+#[error("circuit is not concrete, it has at least one formal parameter")]
+pub struct NotConcreteError;
+
+impl TryFrom<QuantumCircuit> for ConcreteCircuit {
+    type Error = NotConcreteError;
+
+    fn try_from(circ: QuantumCircuit) -> Result<Self, Self::Error> {
+        circ.is_concrete().then(|| ConcreteCircuit::new(circ)).ok_or(NotConcreteError)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct TranspiledCircuit<T: Architecture> {
     _phantom: PhantomData<T>,
     circ: QuantumCircuit,
 }
 
-impl<T: Architecture> Deref for TranspiledCircuit<T> {
-    type Target = QuantumCircuit;
-
-    fn deref(&self) -> &Self::Target {
-        &self.circ
-    }
-}
-
-impl<'arch, T: Architecture> TranspiledCircuit<T> {
+impl<T: Architecture> TranspiledCircuit<T> {
     /// Wraps the circuit in a transpiled circuit type, to signify it has
     /// been transpiled for the provider T. Sould obviously only be used after
     /// transpiling the input circuit.
@@ -248,5 +256,13 @@ impl<'arch, T: Architecture> TranspiledCircuit<T> {
 
     pub fn take(self) -> QuantumCircuit {
         self.circ
+    }
+}
+
+impl<T: Architecture> Deref for TranspiledCircuit<T> {
+    type Target = QuantumCircuit;
+
+    fn deref(&self) -> &Self::Target {
+        &self.circ
     }
 }
