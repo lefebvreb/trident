@@ -26,7 +26,6 @@ pub struct Compute<'id, T> {
 
 impl<'id, T> Compute<'id, T> {
     /// Writes the compute to the destination.
-    #[inline]
     pub(crate) fn write(&self, dest: &mut Vec<u32>) {
         storage::write(dest, self.bits.len() as u32);
         storage::write_slice(dest, self.bits);
@@ -34,7 +33,6 @@ impl<'id, T> Compute<'id, T> {
     }
 
     /// Reads the compute from the destination.
-    #[inline]
     pub(crate) fn read(src: &mut &'id [u32]) -> Self {
         Self {
             bits: {
@@ -68,7 +66,6 @@ macro_rules! modifiers {
 
         impl<'id> Modifier<'id> {
             /// Writes the modifier to the destination.
-            #[inline]
             pub(crate) fn write(&self, dest: &mut Vec<u32>) {
                 match self {
                     $(
@@ -81,7 +78,6 @@ macro_rules! modifiers {
             }
 
             /// Reads the modifier from the destination.
-            #[inline]
             pub(crate) fn read(src: &mut &'id [u32]) -> Self {
                 match storage::read::<u32>(src) {
                     $(
@@ -149,7 +145,6 @@ pub struct Instr<'id> {
 
 impl<'id> Instr<'id> {
     /// Writes the instruction to the destination.
-    #[inline]
     pub(crate) fn write(&self, dest: &mut Vec<u32>) {
         let flags = {
             let mut res = InstrFlags::empty();
@@ -180,7 +175,6 @@ impl<'id> Instr<'id> {
     }
 
     /// Reads the instruction from the source.
-    #[inline]
     pub(crate) fn read(&mut self, src: &mut &'id [u32]) {
         let (op, flags) = OpKind::read(src);
 
@@ -200,12 +194,10 @@ impl<'id> Instr<'id> {
         self.modifier = flags.contains(InstrFlags::HAS_MODIFIER).then(|| Modifier::read(src));
     }
 
-    #[inline]
     pub fn has_modifier(&self) -> bool {
         self.modifier.is_some()
     }
 
-    #[inline]
     pub fn is_concrete(&self) -> bool {
         self.parameters.iter().cloned().all(Parameter::is_value)
     }
@@ -219,12 +211,10 @@ pub struct InstrIter<'id> {
 
 impl<'id> InstrIter<'id> {
     /// Creates a new instruction iterator from the given source.
-    #[inline]
     pub(crate) fn new(src: &'id [u32]) -> Self {
         Self { instr: Instr::default(), src }
     }
     
-    #[inline]
     pub fn next(&mut self) -> Option<&Instr<'id>> {
         // Implementing `Iterator` is impossible because of the struct's internal buffer `self.instr`.
         (!self.src.is_empty()).then(|| {
@@ -241,32 +231,26 @@ pub struct InstrVec<'id> {
 }
 
 impl<'id> InstrVec<'id> {
-    #[inline]
     pub(crate) fn new(data: Vec<u32>) -> Self {
         Self { _id: Id::default(), data }
     }
 
-    #[inline]
     pub(crate) fn take(self) -> Vec<u32> {
         self.data
     }
 
-    #[inline]
     pub fn append(&mut self, instruction: &Instr<'id>) {
         instruction.write(&mut self.data);
     }
 
-    #[inline]
     pub fn extend(&mut self, instructions: &InstrVec<'id>) {
         self.data.extend(&instructions.data);
     }
 
-    #[inline]
     pub fn clear(&mut self) {
         self.data.clear()
     }
 
-    #[inline]
     pub fn iter(&'id self) -> InstrIter<'id> {
         InstrIter::new(&self.data)
     }

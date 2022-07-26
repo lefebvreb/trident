@@ -7,34 +7,28 @@ use super::storage;
 pub struct Arity(u32);
 
 impl Arity {
-    #[inline]
     pub fn new(n: u32) -> Option<Self> {
         (n != u32::MAX).then(|| Self(n))
     }
 
-    #[inline]
     pub fn variadic() -> Self {
         Self(u32::MAX)
     }
 
-    #[inline]
     pub fn is_variadic(self) -> bool {
         self.0 == u32::MAX
     }
 
-    #[inline]
     pub fn is_definite(self) -> bool {
         !self.is_variadic()
     }
 
-    #[inline]
     pub fn get(self) -> Option<u32> {
         self.is_definite().then(|| self.0)
     }
 }
 
 impl From<u32> for Arity {
-    #[inline]
     fn from(n: u32) -> Self {
         Self(n)
     }
@@ -72,7 +66,6 @@ macro_rules! operations {
 
         impl<'id> OpKind<'id> {
             /// Writes the operation kind along with the given flags to the destination.
-            #[inline]
             pub(crate) fn write(&self, dest: &mut Vec<u32>, flags: InstrFlags) {
                 match self {
                     $(
@@ -85,7 +78,6 @@ macro_rules! operations {
             }
 
             /// Reads the operation kind along with it's associated flags from the destination.
-            #[inline]
             pub(crate) fn read(src: &mut &'id [u32]) -> (Self, InstrFlags) {
                 let (flags, id): (InstrFlags, u16) = storage::read(src);
 
@@ -99,7 +91,6 @@ macro_rules! operations {
                 (op, flags)
             }
 
-            #[inline]
             #[allow(unused_variables)]
             pub fn qubits(&self) -> Arity {
                 match self {
@@ -107,7 +98,6 @@ macro_rules! operations {
                 }
             }
 
-            #[inline]
             #[allow(unused_variables)]
             pub fn bits(&self) -> Arity {
                 match self {
@@ -115,7 +105,6 @@ macro_rules! operations {
                 }
             }
 
-            #[inline]
             #[allow(unused_variables)]
             pub fn parameters(&self) -> Arity {
                 match self {
@@ -123,7 +112,6 @@ macro_rules! operations {
                 }
             }
 
-            #[inline]
             #[allow(unused_variables)]
             pub fn is_unitary(&self) -> bool {
                 match self {
@@ -131,7 +119,6 @@ macro_rules! operations {
                 }
             }
 
-            #[inline]
             #[allow(unused_variables)]
             pub fn label(&self) -> &'static str {
                 match self {

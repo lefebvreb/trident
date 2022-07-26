@@ -7,13 +7,11 @@ use std::mem;
 type Word = u32;
 
 /// Checks that T and Word have the same size and align
-#[inline(always)]
 fn assert_transparent<T>() {
     assert_eq!(mem::size_of::<T>(), mem::size_of::<Word>(), "T and Word must be the same size");
     assert_eq!(mem::align_of::<T>(), mem::align_of::<Word>(), "T and Word must be the same align");
 }
 
-#[inline(always)]
 fn size_multiple<T>() -> usize {
     assert_ne!(mem::size_of::<Word>(), 0, "Word can't be a ZST");
     assert_eq!(mem::size_of::<T>() % mem::size_of::<Word>(), 0, "T's size must be a multiple of Word's");
@@ -22,7 +20,6 @@ fn size_multiple<T>() -> usize {
 
 /// Reads a single Word from the source.
 /// Panics if the source is empty.
-#[inline(always)]
 fn read_word(src: &mut &[Word]) -> Word {
     // TODO: replace with <[T]>::take_first when it eventually stabilizes
     let (&first, tail) = src.split_first().unwrap();
@@ -33,7 +30,6 @@ fn read_word(src: &mut &[Word]) -> Word {
 /// Reads a type T from the source. 
 /// Panics if the size of T is not equal nor twice the size of Word, or
 /// the source is empty.
-#[inline(always)]
 pub(crate) fn read<T>(src: &mut &[Word]) -> T {
     match size_multiple::<T>() {
         1 => {
@@ -56,7 +52,6 @@ pub(crate) fn read<T>(src: &mut &[Word]) -> T {
 /// 
 /// For robustness this function should only be used when T is of `repr(transparent)` with
 /// Word.
-#[inline(always)]
 pub(crate) fn read_slice<'src, T>(src: &mut &'src [Word], len: u32) -> &'src [T] {
     assert_transparent::<T>();
 
@@ -69,7 +64,6 @@ pub(crate) fn read_slice<'src, T>(src: &mut &'src [Word], len: u32) -> &'src [T]
 
 /// Writes a single T to the destination.
 /// Panics if the size of T is not equal nor twice the size of Word.
-#[inline(always)]
 pub(crate) fn write<T>(dest: &mut Vec<Word>, data: T) {
     match size_multiple::<T>() {
         1 => {
@@ -91,7 +85,6 @@ pub(crate) fn write<T>(dest: &mut Vec<Word>, data: T) {
 /// 
 /// For robustness this function should only be used when T is of `repr(transparent)` with
 /// Word.
-#[inline(always)]
 pub(crate) fn write_slice<T>(dest: &mut Vec<Word>, slice: &[T]) {
     assert_transparent::<T>();
 

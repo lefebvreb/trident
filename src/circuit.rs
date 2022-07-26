@@ -23,7 +23,6 @@ pub struct QuantumCircuit {
 }
 
 impl QuantumCircuit {
-    #[inline]
     pub fn new<F>(init: F) -> Result<Self, CircuitError>
     where
         F: for<'id> FnOnce(&mut CircuitBuilder<'id>) -> Result<(), CircuitError>
@@ -31,7 +30,6 @@ impl QuantumCircuit {
         Self::default().edit(init)
     }
 
-    #[inline]
     pub fn edit<F>(self, edit: F) -> Result<Self, CircuitError>
     where
         F: for<'id> FnOnce(&mut CircuitBuilder<'id>) -> Result<(), CircuitError>
@@ -40,44 +38,36 @@ impl QuantumCircuit {
         edit(&mut builder).map(|_| builder.into_circ())
     }
 
-    #[inline]
     pub fn num_qubit(&self) -> usize {
         self.num_qubits as usize
     }
 
-    #[inline]
     pub fn num_ancillas(&self) -> usize {
         self.num_ancillas as usize
     }
 
-    #[inline]
     pub fn num_parameters(&self) -> usize {
         self.num_params as usize
     }
 
-    #[inline]
     pub fn num_bits(&self) -> usize {
         self.num_bits as usize
     }
 
-    #[inline]
     pub fn width(&self) -> usize {
         self.num_qubit() + self.num_ancillas()
     }
 
-    #[inline]
     pub fn is_concrete(&self) -> bool {
         self.num_parameters() == 0
     }
 
-    #[inline]
     pub fn bind(self, parameters: &[f32]) -> Option<ConcreteCircuit> {
         (parameters.len() == self.num_parameters()).then(|| {
             todo!() // TODO: implement this somehow.
         })
     }
 
-    #[inline]
     pub fn bind_copy(&self, parameters: &[f32]) -> Option<ConcreteCircuit> {
         self.clone().bind(parameters)
     }
@@ -95,14 +85,12 @@ pub struct CircuitBuilder<'id> {
 impl<'id> Deref for CircuitBuilder<'id> {
     type Target = InstrVec<'id>;
 
-    #[inline]
     fn deref(&self) -> &Self::Target {
         &self.data
     }
 }
 
 impl DerefMut for CircuitBuilder<'_> {
-    #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.data
     }
@@ -110,7 +98,6 @@ impl DerefMut for CircuitBuilder<'_> {
 
 impl<'id> CircuitBuilder<'id> {
     /// Turns the quantum circuit into a circuit builder.
-    #[inline]
     pub(crate) fn from_circ(circ: QuantumCircuit) -> Self {
         Self {
             num_qubits: circ.num_qubits,
@@ -122,7 +109,6 @@ impl<'id> CircuitBuilder<'id> {
     }
 
     /// Turns the circuit builder into a quantum circuit.
-    #[inline]
     pub(crate) fn into_circ(self) -> QuantumCircuit {
         QuantumCircuit {
             num_qubits: self.num_qubits,
@@ -134,61 +120,50 @@ impl<'id> CircuitBuilder<'id> {
     }
 
     /// Returns a mutable reference to the qubit count.
-    #[inline]
     pub(crate) fn num_qubits_mut(&mut self) -> &mut u32 {
         &mut self.num_qubits
     }
 
     /// Returns a mutable reference to the parameter count.
-    #[inline]
     pub(crate) fn num_params_mut(&mut self) -> &mut u32 {
         &mut self.num_params
     }
 
     /// Returns a mutable reference to the bit count.
-    #[inline]
     pub(crate) fn num_bits_mut(&mut self) -> &mut u32 {
         &mut self.num_bits
     }
 
-    #[inline]
     pub fn num_qubits(&self) -> usize {
         self.num_qubits as usize
     }
 
-    #[inline]
     pub fn num_ancillas(&self) -> usize {
         self.num_ancillas as usize
     }
 
-    #[inline]
     pub fn num_parameters(&self) -> usize {
         self.num_params as usize
     }
 
-    #[inline]
     pub fn num_bits(&self) -> usize {
         self.num_bits as usize
     }
 
-    #[inline]
     pub fn width(&self) -> usize {
         self.num_qubits() + self.num_ancillas()
     }
 
-    #[inline]
     pub fn set_num_ancillas(&mut self, n: usize) -> Result<(), CircuitError> {
         (n < Qubit::MAX as usize - self.width())
             .then(|| self.num_ancillas += n as u32)
             .ok_or(CircuitError::AllocOverflow)
     }
 
-    #[inline]
     pub fn alloc<T: Symbol<'id>>(&mut self) -> Result<T, CircuitError> {
         T::reserve(self, 1).map(T::new_unchecked)
     }
 
-    #[inline]
     pub fn alloc_n<T: Symbol<'id>, const N: usize>(&mut self) -> Result<[T; N], CircuitError> {
         T::reserve(self, N).map(|mut n| {
             [(); N].map(|_| {
@@ -199,17 +174,14 @@ impl<'id> CircuitBuilder<'id> {
         })
     }
 
-    #[inline]
     pub fn alloc_tuple<T: SymbolTuple<'id>>(&mut self) -> Result<T, CircuitError> {
         T::alloc(self)
     }
 
-    #[inline]
     pub fn instructions(&self) -> &InstrVec<'id> {
         &self.data
     }
 
-    #[inline]
     pub fn instructions_mut(&mut self) -> &mut InstrVec<'id> {
         &mut self.data
     }
@@ -224,12 +196,10 @@ impl ConcreteCircuit {
     /// Wraps the circuit in a concrete circuit type, to signify it is
     /// a concrete circuit. Sould obviously only be used after
     /// binding the input circuit's parameters.
-    #[inline]
     fn new(circ: QuantumCircuit) -> Self {
         Self { circ }
     }
 
-    #[inline]
     pub fn transpile<'arch, T: Architecture>(self, backend: &T) -> Result<TranspiledCircuit<T>, T::TranspileError> {
         let mut circ = self.take();
         let ancillas = Ancillas::new(&circ);
@@ -237,12 +207,10 @@ impl ConcreteCircuit {
         Ok(TranspiledCircuit::new(circ))
     }
 
-    #[inline]
     pub fn transpile_copy<T: Architecture>(&self, backend: &T) -> Result<TranspiledCircuit<T>, T::TranspileError> {
         self.clone().transpile(backend)
     }
 
-    #[inline]
     pub fn take(self) -> QuantumCircuit {
         self.circ
     }
@@ -251,7 +219,6 @@ impl ConcreteCircuit {
 impl Deref for ConcreteCircuit {
     type Target = QuantumCircuit;
 
-    #[inline]
     fn deref(&self) -> &Self::Target {
         &self.circ
     }
@@ -266,7 +233,6 @@ pub struct TranspiledCircuit<T: Architecture> {
 impl<T: Architecture> Deref for TranspiledCircuit<T> {
     type Target = QuantumCircuit;
 
-    #[inline]
     fn deref(&self) -> &Self::Target {
         &self.circ
     }
@@ -276,12 +242,10 @@ impl<'arch, T: Architecture> TranspiledCircuit<T> {
     /// Wraps the circuit in a transpiled circuit type, to signify it has
     /// been transpiled for the provider T. Sould obviously only be used after
     /// transpiling the input circuit.
-    #[inline]
     fn new(circ: QuantumCircuit) -> Self {
         Self { _phantom: PhantomData, circ }
     }
 
-    #[inline]
     pub fn take(self) -> QuantumCircuit {
         self.circ
     }

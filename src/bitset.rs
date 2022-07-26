@@ -5,19 +5,16 @@ pub struct BitSet {
 }
 
 /// Returns the index of the word (byte) that contains the `index`th bit.
-#[inline(always)]
 fn word(index: usize) -> usize {
     index >> 3
 }
 
 /// Returns a mask of the position of the `index`th bit in it's containing word (byte).
-#[inline(always)]
 fn mask(index: usize) -> u8 {
     1 << (index & 7)
 }
 
 impl BitSet {
-    #[inline]
     pub fn new(size: usize) -> Self {
         Self {
             size,
@@ -25,17 +22,14 @@ impl BitSet {
         }
     }
 
-    #[inline]
     pub fn len(&self) -> usize {
         self.size
     }
 
-    #[inline]
     pub fn get(&self, index: usize) -> Option<bool> {
         (index < self.size).then(|| self.data[word(index)] & mask(index) == 1)
     }
 
-    #[inline]
     pub fn set(&mut self, index: usize, value: bool) -> Option<()> {
         (index < self.size).then(|| if value {
             self.data[word(index)] |= mask(index)

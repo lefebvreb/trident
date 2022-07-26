@@ -46,17 +46,14 @@ macro_rules! symbols {
             impl<'id> Symbol<'id> for $name<'id> {
                 $(const MAX: u32 = $max;)?
 
-                #[inline]
                 fn new_unchecked(n: u32) -> Self {
                     Self { n, _id: Id::default() }
                 }
 
-                #[inline]
                 fn id(self) -> u32 {
                     self.n
                 }
 
-                #[inline]
                 fn reserve(builder: &mut CircuitBuilder<'id>, n: usize) -> Result<u32, CircuitError> {
                     (n < Self::MAX as usize - builder.$num()).then(|| {
                         let val = *builder.$counter();
@@ -103,7 +100,6 @@ macro_rules! tuple {
     {} => {};
     { $($name: ident,)+ } => {
         impl<'id, $($name,)+> SymbolTuple<'id> for ($($name,)+) where $($name: Symbol<'id>,)* {
-            #[inline]
             fn alloc(builder: &mut CircuitBuilder<'id>) -> Result<Self, CircuitError> {
                 Ok(($(builder.alloc::<$name>()?,)+))
             }
@@ -123,7 +119,6 @@ pub struct Ancillas<'id> {
 
 impl<'id> Ancillas<'id> {
     /// Returns an ancillas list from a circuit's parameters.
-    #[inline]
     pub(crate) fn new(circ: &QuantumCircuit) -> Option<Self> {
         (circ.num_ancillas() > 0).then(|| {
             let start = circ.num_qubit() as u32;
@@ -135,22 +130,18 @@ impl<'id> Ancillas<'id> {
         })
     }
 
-    #[inline]
     pub fn count(&self) -> usize {
         self.range.len()
     }
 
-    #[inline]
     pub fn get(&self, n: usize) -> Option<Qubit<'id>> {
         (n < self.count()).then(|| Qubit::new_unchecked(n as u32 + self.range.start))
     }
 
-    #[inline]
     pub fn contains(&self, qubit: Qubit<'id>) -> bool {
         self.range.contains(&qubit.id())
     }
 
-    #[inline]
     pub fn iter(&self) -> AncillasIter<'id> {
         AncillasIter { ancillas: self.clone() }
     }
@@ -164,7 +155,6 @@ pub struct AncillasIter<'id> {
 impl<'id> Iterator for AncillasIter<'id> {
     type Item = Qubit<'id>;
 
-    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         self.ancillas.range.next().map(Qubit::new_unchecked)
     }
@@ -175,7 +165,6 @@ impl<'id> IntoIterator for Ancillas<'id> {
 
     type IntoIter = AncillasIter<'id>;
 
-    #[inline]
     fn into_iter(self) -> Self::IntoIter {
         self.iter()
     }
