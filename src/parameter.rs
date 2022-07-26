@@ -12,7 +12,7 @@ pub struct Parameter<'id> {
 impl<'id> Parameter<'id> {
     /// The precision with which to compare two parameters. Quantum computers
     /// can't reach this level of precision nowadays.
-    pub const PRECISION: f32 = 1e-4;
+    pub const PRECISION: f32 = 1E-5;
 
     /// Returns a new `Parameter` from it's bits.
     fn new(bits: u32) -> Self {

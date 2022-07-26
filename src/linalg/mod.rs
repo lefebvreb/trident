@@ -51,6 +51,14 @@ impl Matrix<2> {
     }
 }
 
+impl<const N: usize> PartialEq for Matrix<N> {
+    fn eq(&self, rhs: &Self) -> bool {
+        (0..N).zip((0..N)).all(|(i, j)| {
+            self[i][j] == rhs[i][j]
+        })
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct UnitaryMatrix<const N: usize> {
     mat: Matrix<N>

@@ -18,7 +18,7 @@ impl c64 {
     /// Two complex numbers $ z_1 $ and $ z_2 $ will be considered equal when:
     /// 
     /// $ z_1^* z_2 < p^2 $
-    pub const PRECISION: f64 = 0.0;
+    pub const PRECISION: f64 = 1E-10;
 
     /// The complex number representing $ 0 $.
     pub const ZERO: Self = Self::new(0.0, 0.0);
@@ -331,7 +331,7 @@ impl Product for c64 {
 }
 
 impl PartialEq for c64 {
-    fn eq(&self, other: &Self) -> bool {
-        (self - other).abs_sqr() <= Self::PRECISION * Self::PRECISION
+    fn eq(&self, rhs: &Self) -> bool {
+        (self - rhs).abs_sqr() <= Self::PRECISION * Self::PRECISION
     }
 }
