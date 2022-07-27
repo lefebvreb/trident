@@ -17,7 +17,7 @@ impl c64 {
     /// The precision $ p $ with which to compare two complex numbers.
     /// Two complex numbers $ z_1 $ and $ z_2 $ will be considered equal when:
     /// 
-    /// $ z_1^* z_2 < p^2 $
+    /// $ |z_1 - z_2|^2 < p $
     pub const PRECISION: f64 = 1E-10;
 
     /// The complex number representing $ 0 $.
@@ -42,7 +42,7 @@ impl c64 {
     /// $ \textrm{euler} (r, \theta) \coloneqq r e^{i \theta} $
     pub fn euler(r: f64, theta: f64) -> Self {
         let (sin, cos) = theta.sin_cos();
-        Self::new(r * cos, r * sin)
+        r * Self::new(cos, sin)
     }
 
     /// Creates a new complex number in Euler form (or exponential, or polat), 
@@ -116,6 +116,13 @@ impl c64 {
     pub fn recip(&self) -> Self {
         self.conj() * self.abs_sqr().recip()
     }
+
+    /// Returns `true` if the given slice of complex numbers forms a distribution, i.e.
+    /// 
+    /// $ \sum^{n}_{i=1} |z_i|^2 = 1 $
+    pub fn is_distribution(factors: &[Self]) -> bool {
+        (factors.iter().map(Self::abs_sqr).sum::<f64>() - 1.0) <= Self::PRECISION
+    }
 }
 
 impl fmt::Display for c64 {
@@ -126,7 +133,13 @@ impl fmt::Display for c64 {
 
 // Implements the arithmetic operation $op for this complex type.
 macro_rules! complex_op {
-    { $op: ident, $fn: ident, $op_assign: ident, $fn_assign: ident, $complex_complex: expr, $complex_float: expr, $float_complex: expr } => {
+    { 
+        $op: ident: $fn: ident, 
+        $op_assign: ident: $fn_assign: ident, 
+        $complex_complex: expr, 
+        $complex_float: expr, 
+        $float_complex: expr 
+    } => {
         // complex ? complex
 
         impl $op<c64> for c64 {
@@ -261,15 +274,17 @@ macro_rules! complex_op {
 
 // Addition
 complex_op! {
-    Add, add, AddAssign, add_assign,
+    Add: add, 
+    AddAssign: add_assign,
     |a: c64, b: c64| c64::new(a.re + b.re, a.im + b.im),
     |a: c64, b: f64| c64::new(a.re + b, a.im),
-    |a: f64, b: c64| c64::new(a + b.re, b.im)
+    |a: f64, b: c64| c64::new(b.re + a, b.im)
 }
 
 // Subtraction
 complex_op! {
-    Sub, sub, SubAssign, sub_assign,
+    Sub: sub, 
+    SubAssign: sub_assign,
     |a: c64, b: c64| c64::new(a.re - b.re, a.im - b.im),
     |a: c64, b: f64| c64::new(a.re - b, a.im),
     |a: f64, b: c64| c64::new(a - b.re, -b.im)
@@ -277,7 +292,8 @@ complex_op! {
 
 // Multiplication
 complex_op! {
-    Mul, mul, MulAssign, mul_assign,
+    Mul: mul, 
+    MulAssign: mul_assign,
     |a: c64, b: c64| c64::new(a.re * b.re - a.im * b.im, a.re * b.im + a.im * b.re),
     |a: c64, b: f64| c64::new(a.re * b, a.im * b),
     |a: f64, b: c64| c64::new(b.re * a, b.im * a)
@@ -285,7 +301,8 @@ complex_op! {
 
 // Division
 complex_op! {
-    Div, div, DivAssign, div_assign,
+    Div: div, 
+    DivAssign: div_assign,
     |a: c64, b: c64| {
         let denom = b.abs_sqr().recip();
         c64::new(a.re * b.re + a.im * b.im, a.im * b.re - a.re * b.im) * denom
@@ -326,7 +343,7 @@ impl Product for c64 {
 
 impl PartialEq for c64 {
     fn eq(&self, rhs: &Self) -> bool {
-        (self - rhs).abs_sqr() <= Self::PRECISION * Self::PRECISION
+        (self - rhs).abs_sqr() <= Self::PRECISION
     }
 }
 

@@ -5,7 +5,7 @@ use thiserror::Error;
 
 use crate::instruction::InstrVec;
 use crate::provider::Architecture;
-use crate::symbol::{SymbolTuple, Symbol, Qubit, Ancillas};
+use crate::symbol::{SymbolTuple, Symbol, Qubit, Ancillas, Bit, FormalParameter};
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Error)]
 pub enum CircuitError {
@@ -13,12 +13,16 @@ pub enum CircuitError {
     AllocOverflow,
 }
 
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Error)]
+#[error("quantum allocator overflow")]
+pub struct CircuitAllocOverflow;
+
 #[derive(Clone, Default, Debug)]
 pub struct QuantumCircuit {
     num_qubits: u32,
-    num_ancillas: u32,
     num_bits: u32,
-    num_params: u32,
+    num_formals: u32,
+    num_ancillas: u32,
     data: Vec<u32>,
 }
 
@@ -42,12 +46,8 @@ impl QuantumCircuit {
         self.num_qubits as usize
     }
 
-    pub fn num_ancillas(&self) -> usize {
-        self.num_ancillas as usize
-    }
-
-    pub fn num_parameters(&self) -> usize {
-        self.num_params as usize
+    pub fn num_formals(&self) -> usize {
+        self.num_formals as usize
     }
 
     pub fn num_bits(&self) -> usize {
@@ -58,8 +58,12 @@ impl QuantumCircuit {
         self.num_qubit() + self.num_ancillas()
     }
 
+    pub fn num_ancillas(&self) -> usize {
+        self.num_ancillas as usize
+    }
+
     pub fn bind(self, parameters: &[f32]) -> Option<ConcreteCircuit> {
-        (parameters.len() == self.num_parameters()).then(|| {
+        (parameters.len() == self.num_formals()).then(|| {
             todo!() // TODO: implement this somehow.
         })
     }
@@ -69,7 +73,7 @@ impl QuantumCircuit {
     }
 
     pub fn is_concrete(&self) -> bool {
-        self.num_parameters() == 0
+        self.num_formals() == 0
     }
 
     pub fn as_concrete(self) -> Option<ConcreteCircuit> {
@@ -80,9 +84,9 @@ impl QuantumCircuit {
 #[derive(Debug)]
 pub struct CircuitBuilder<'id> {
     num_qubits: u32,
-    num_ancillas: u32,
     num_bits: u32,
-    num_params: u32,
+    num_formals: u32,
+    num_ancillas: u32,
     data: InstrVec<'id>,
 }
 
@@ -100,6 +104,14 @@ impl DerefMut for CircuitBuilder<'_> {
     }
 }
 
+/// Increments the value at `val` by 1, and returns it's previous value
+#[inline(always)]
+fn incr(val: &mut u32) -> u32 {
+    let prev = *val;
+    *val += 1;
+    prev
+}
+
 impl<'id> CircuitBuilder<'id> {
     /// Turns the quantum circuit into a circuit builder.
     pub(crate) fn from_circ(circ: QuantumCircuit) -> Self {
@@ -107,7 +119,7 @@ impl<'id> CircuitBuilder<'id> {
             num_qubits: circ.num_qubits,
             num_ancillas: circ.num_ancillas,
             num_bits: circ.num_bits,
-            num_params: circ.num_params,
+            num_formals: circ.num_formals,
             data: InstrVec::new(circ.data),
         }
     }
@@ -118,7 +130,7 @@ impl<'id> CircuitBuilder<'id> {
             num_qubits: self.num_qubits,
             num_ancillas: self.num_ancillas,
             num_bits: self.num_bits,
-            num_params: self.num_params,
+            num_formals: self.num_formals,
             data: self.data.take(),
         }
     }
@@ -130,7 +142,7 @@ impl<'id> CircuitBuilder<'id> {
 
     /// Returns a mutable reference to the parameter count.
     pub(crate) fn num_params_mut(&mut self) -> &mut u32 {
-        &mut self.num_params
+        &mut self.num_formals
     }
 
     /// Returns a mutable reference to the bit count.
@@ -142,43 +154,65 @@ impl<'id> CircuitBuilder<'id> {
         self.num_qubits as usize
     }
 
-    pub fn num_ancillas(&self) -> usize {
-        self.num_ancillas as usize
+    pub fn qubit(&mut self) -> Result<Qubit<'id>, CircuitAllocOverflow> {
+        (1 < Qubit::MAX as usize - self.width())
+            .then(|| Qubit::new_unchecked(incr(&mut self.num_bits)))
+            .ok_or(CircuitAllocOverflow)
     }
 
-    pub fn num_parameters(&self) -> usize {
-        self.num_params as usize
+    pub fn qubits<const N: usize>(&mut self) -> Result<[Qubit<'id>; N], CircuitAllocOverflow> {
+        (N < Qubit::MAX as usize - self.num_bits())
+            .then(|| [(); N].map(|_| Qubit::new_unchecked(incr(&mut self.num_bits))))
+            .ok_or(CircuitAllocOverflow)
+    }
+
+    pub fn num_formals(&self) -> usize {
+        self.num_formals as usize
+    }
+
+    pub fn formal(&mut self) -> Result<FormalParameter<'id>, CircuitAllocOverflow> {
+        (1 < FormalParameter::MAX as usize - self.num_formals())
+            .then(|| FormalParameter::new_unchecked(incr(&mut self.num_bits)))
+            .ok_or(CircuitAllocOverflow)
+    }
+
+    pub fn formals<const N: usize>(&mut self) -> Result<[FormalParameter<'id>; N], CircuitAllocOverflow> {
+        (N < FormalParameter::MAX as usize - self.num_formals())
+            .then(|| [(); N].map(|_| FormalParameter::new_unchecked(incr(&mut self.num_bits))))
+            .ok_or(CircuitAllocOverflow)
     }
 
     pub fn num_bits(&self) -> usize {
         self.num_bits as usize
     }
 
+    pub fn bit(&mut self) -> Result<Bit<'id>, CircuitAllocOverflow> {
+        (1 < Bit::MAX as usize - self.num_bits())
+            .then(|| Bit::new_unchecked(incr(&mut self.num_bits)))
+            .ok_or(CircuitAllocOverflow)
+    }
+
+    pub fn bits<const N: usize>(&mut self) -> Result<[Bit<'id>; N], CircuitAllocOverflow> {
+        (N < Bit::MAX as usize - self.num_bits())
+            .then(|| [(); N].map(|_| Bit::new_unchecked(incr(&mut self.num_bits))))
+            .ok_or(CircuitAllocOverflow)
+    }
+
+    pub fn num_ancillas(&self) -> usize {
+        self.num_ancillas as usize
+    }
+
+    pub fn set_num_ancillas(&mut self, n: usize) -> Result<(), CircuitAllocOverflow> {
+        (n < (Qubit::MAX - self.num_qubits) as usize)
+            .then(|| self.num_ancillas = n as u32)
+            .ok_or(CircuitAllocOverflow)
+    }
+
     pub fn width(&self) -> usize {
         self.num_qubits() + self.num_ancillas()
     }
 
-    pub fn set_num_ancillas(&mut self, n: usize) -> Result<(), CircuitError> {
-        (n < Qubit::MAX as usize - self.width())
-            .then(|| self.num_ancillas += n as u32)
-            .ok_or(CircuitError::AllocOverflow)
-    }
-
-    pub fn alloc<T: Symbol<'id>>(&mut self) -> Result<T, CircuitError> {
-        T::reserve(self, 1).map(T::new_unchecked)
-    }
-
-    pub fn alloc_n<T: Symbol<'id>, const N: usize>(&mut self) -> Result<[T; N], CircuitError> {
-        T::reserve(self, N).map(|mut n| {
-            [(); N].map(|_| {
-                let sym = T::new_unchecked(n);
-                n += 1;
-                sym
-            })
-        })
-    }
-
-    pub fn alloc_tuple<T: SymbolTuple<'id>>(&mut self) -> Result<T, CircuitError> {
+    pub fn alloc<T: SymbolTuple<'id>>(&mut self) -> Result<T, CircuitAllocOverflow> {
         T::alloc(self)
     }
 

@@ -1,36 +1,21 @@
 use std::ops::Range;
 
 use crate::genericity::Id;
-use crate::circuit::{CircuitBuilder, CircuitError};
+use crate::circuit::{CircuitBuilder, CircuitError, CircuitAllocOverflow};
 use crate::prelude::QuantumCircuit;
 
-pub trait Symbol<'id> {
-    /// The maximum number of symbols of type `Self` that may be allocated in a single quantum circuit.
-    const MAX: u32 = u32::MAX - 1;
-
-    fn new_unchecked(n: u32) -> Self;
-    
-    fn id(self) -> u32;
-
-    fn reserve(builder: &mut CircuitBuilder<'id>, n: usize) -> Result<u32, CircuitError>;
+pub trait Symbol<'id>: Sized {
+    fn alloc(builder: &mut CircuitBuilder<'id>) -> Result<Self, CircuitAllocOverflow>;
 }
 
 /// Used to define the different symbols types.
-/// 
-/// # Implementaion details
-/// 
-/// + $num is the name of the `CircuitBuilder`'s method that returns the current count of allocated symbols:
-/// for parameters and bits that's their direct count. For qubits that's the `width`: ancillas and primary qubits.
-/// + $counter is the name of the `CircuitBuilder`'s method used to get a mutable reference to the number of allocated
-/// symbols. For qubits, this does not include ancillas.
 macro_rules! symbols {
     {
         $(
             $(#[doc$($args: tt)*])* 
             $name: ident {
-                num: $num: ident,
-                counter: $counter: ident,
-                $(max: $max: expr,)?
+                max: $max: expr,
+                alloc: $alloc: ident,
             }
         )*
     } => {
@@ -42,25 +27,23 @@ macro_rules! symbols {
                 _id: Id<'id>,
                 n: u32,
             }
-    
-            impl<'id> Symbol<'id> for $name<'id> {
-                $(const MAX: u32 = $max;)?
 
-                fn new_unchecked(n: u32) -> Self {
+            impl $name<'_> {
+                /// The maximum number of symbols of type `Self` that may be allocated in a single quantum circuit.
+                pub const MAX: u32 = $max;
+
+                pub fn new_unchecked(n: u32) -> Self {
                     Self { n, _id: Id::default() }
                 }
 
-                fn id(self) -> u32 {
+                pub fn id(self) -> u32 {
                     self.n
                 }
-
-                fn reserve(builder: &mut CircuitBuilder<'id>, n: usize) -> Result<u32, CircuitError> {
-                    (n < Self::MAX as usize - builder.$num()).then(|| {
-                        let val = *builder.$counter();
-                        *builder.$counter() += n as u32;
-                        val
-                    })
-                    .ok_or(CircuitError::AllocOverflow)
+            }
+    
+            impl<'id> Symbol<'id> for $name<'id> {
+                fn alloc(builder: &mut CircuitBuilder<'id>) -> Result<Self, CircuitAllocOverflow> {
+                    builder.$alloc()
                 }
             }
         )*
@@ -68,28 +51,24 @@ macro_rules! symbols {
 }
 
 symbols! {
-    /// TODO: Doc
     Qubit {
-        num: width,
-        counter: num_qubits_mut,
+        max: u32::MAX - 1,
+        alloc: qubit,
     }
 
-    /// TODO: Doc
     FormalParameter {
-        num: num_parameters,
-        counter: num_params_mut,
+        max: u32::MAX - 1,
+        alloc: formal,
     }
 
-    /// TODO: Doc
     Bit {
-        num: num_bits,
-        counter: num_bits_mut,
         max: 1 << f32::MANTISSA_DIGITS,
+        alloc: bit,
     }
 }
 
 pub trait SymbolTuple<'id>: Sized {
-    fn alloc(builder: &mut CircuitBuilder<'id>) -> Result<Self, CircuitError>;
+    fn alloc(builder: &mut CircuitBuilder<'id>) -> Result<Self, CircuitAllocOverflow>;
 }
 
 macro_rules! peel {
@@ -100,8 +79,8 @@ macro_rules! tuple {
     {} => {};
     { $($name: ident,)+ } => {
         impl<'id, $($name,)+> SymbolTuple<'id> for ($($name,)+) where $($name: Symbol<'id>,)* {
-            fn alloc(builder: &mut CircuitBuilder<'id>) -> Result<Self, CircuitError> {
-                Ok(($(builder.alloc::<$name>()?,)+))
+            fn alloc(builder: &mut CircuitBuilder<'id>) -> Result<Self, CircuitAllocOverflow> {
+                Ok(($($name::alloc(builder)?,)+))
             }
         }
 
